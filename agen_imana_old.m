@@ -5,25 +5,21 @@ function varargout = agen_imana(what,varargin)
 % -------------------------------------------------------------------------
 %% ------------------------- Directories ----------------------------------
 cwd = cd; % get current directory when called, and return at end of script
+%% ------------------------- Directories ----------------------------------
 %anaDir          = '/media/saarbuckle/sarbuck2020/DATA/agenesis/imaging';
 anaDir          = '/Users/sarbuckle/DATA/agenesis/analysis';
-projDir         = '/Users/sarbuckle/DATA/agenesis';
+projDir         = '/Users/sarbuckle/DATA/agenesis/';
 atlasDir        = '/Users/sarbuckle/DATA/Atlas_templates/FS_LR_164';
 codeDir         ='/Users/sarbuckle/Dropbox (Diedrichsenlab)/Arbuckle_code/projects/project_agenesis'; 
 %codeDir         = '/home/saarbuckle/Dropbox (Diedrichsenlab)/Arbuckle_code/projects/project_agenesis';
 baseDir         = [projDir '/imaging'];   % base directory for analysis
 behaDir         = [baseDir '/behavior'];
-behaDirPR       = [projDir '/behavioural/imaging'];
 anatomicalDir   = [baseDir '/anatomicals'];                
-freesurferDir   = [baseDir '/surfaceFreesurfer'];  
-caretDir        = [baseDir '/surfaceCaret'];  
+freesurferDir   = [baseDir '/surfaceFreesurfer'];                 
 wbDir           = [baseDir '/surfaceWB'];
 imagingDir      = [baseDir '/imaging_data'];
 regDir          = [baseDir '/RegionOfInterest/']; 
-glmDir          = {[baseDir '/glm1'],[baseDir '/glm2'],[baseDir '/glm3'],[baseDir '/glm4'],...
-                    [baseDir '/glm5'],[baseDir '/glm6'],...
-                    [baseDir '/glm7'],[baseDir '/glm8'],[baseDir '/glm9'],[baseDir '/glm10'],...
-                    [baseDir '/glmBEST'],[baseDir '/glm12']};
+glmDir          = {[baseDir '/glm1'],[baseDir '/glm2'],[baseDir '/glm3'],[baseDir '/glm4']};
 pcmDir          = [baseDir '/PCM'];
 % set default plotting style
 style.file(fullfile(codeDir,'agen_style.m'));
@@ -128,7 +124,7 @@ regName    = {'S1','M1','PMd','PMv','SMA','V1','SPLa','SPLp'};
 regSide    = [1 1 1 1 1 1 1 1 2 2 2 2 2 2 2 2];
 regType    = [1 2 3 4 5 6 7 8 1 2 3 4 5 6 7 8];
 cortical   = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1];
-%thalamic   = ~cortical;
+thalamic   = ~cortical;
 numregions = length(regName);
 regions    = [1:length(regType)];
 roiPlotNum = [4 5 6 7 8 1 2 3];
@@ -144,16 +140,15 @@ switch what
     case 'LIST_subj'              
         D = dload(fullfile(projDir,'subj_info.txt'));
         if nargout==0
-            fprintf('\nSN\tID\tCentre\tControl\tAge\tGender\tHandedness\tasegEdited\tgoodSurf\n');
-            fprintf('\n--\t--\t------\t-------\t---\t------\t----------\t----------\t--------\n');
+            fprintf('\nSN\tID\tCentre\tControl\tAge\tGender\tHandedness\tasegEdited\tgoodSurf\tcoreg\trealignedFunc\tglm1\tglm2\tglm3\n');
+            fprintf('\n--\t--\t------\t-------\t---\t------\t----------\t----------\t--------\t-----\t-------------\t----\t----\t----\n');
             for s = unique(D.SN)'
                 S = getrow(D,ismember(D.SN,s));
-                fprintf('%d\t%s\t%d\t%d\t%d\t%d\t%d\t\t%d\t\t%d',S.SN,S.ID{1},S.centre,S.control,S.age,S.gender,S.handedness,S.asegEdited,S.goodSurf);
+                fprintf('%d\t%s\t%d\t%d\t%d\t%d\t%d\t\t%d\t\t%d\t\t%d\t%d\t\t%d\t%d\t%d',S.SN,S.ID{1},S.centre,S.control,S.age,S.gender,S.handedness,S.asegEdited,S.goodSurf,S.coreg,S.realignedFunc,S.glm1,S.glm2,S.glm3);
                 fprintf('\n');
             end
             fprintf('\n');
         else
-            D.group   = ~D.control+1;
             varargout = {D};
         end
     case 'LIST_tt'   
@@ -176,10 +171,10 @@ switch what
             varargout = {T};
         end
     case 'LIST_roi'
-        fprintf('\nROI#\tName\tHemi\tCortical');
-        fprintf('\n----\t----\t----\t--------\n');
+        fprintf('\nROI#\tName\tHemi\tCortical\tThalamic');
+        fprintf('\n----\t----\t----\t--------\t-------\n');
         for r = 1:length(regSide)
-            fprintf('%d\t%s\t%s\t%d\n',r,regName{regType(r)},hem{regSide(r)},cortical(r));
+            fprintf('%d\t%s\t%s\t%d\t\t%d\n',r,regName{regType(r)},hem{regSide(r)},cortical(r),thalamic(r));
         end
     case 'plotModels'
         % does quick logical plot for 4 model components:
@@ -210,62 +205,8 @@ switch what
             spmj_move_rawdata(SPM_fname,rawDataDir);
             fprintf('done\n');
         end
-    case 'MISC_check_movement'                                              % Check movement of subject. Requires GLM 3 for specified subject.
-        vararginoptions(varargin,{'sn'});
-        glm = 2;
-        load(fullfile(glmDir{glm},sprintf('s%02d',sn),'SPM.mat'));
-        spm_rwls_resstats(SPM)          
-    case 'MISC_checkDesignMatrix'
-        vararginoptions(varargin,{'sn','glm'});
-        load(fullfile(glmDir{glm},sprintf('s%02d',sn),'SPM.mat'));
-        imagesc(SPM.xX.X,[0 0.1]);
-        % can also check that regressor heights are consistent across
-        % conditions : plot(SPM.xX.X(1:270,1:30))
     
     case '0' % ------------ BEHA: behavioural analyses --------------------
-    case 'ANA_fmri_doAllTrialAnalysis_practice'
-        % Process force traces for PRACTICE imaging sessions.
-        % - loop through subjects
-        % - per subject per block, loop through trials and harvest force traces
-        % - save output structure per subject separately
-        fig=0; % plot figure per trial analyzed?
-        vararginoptions(varargin,{'fig'});
-        filePrefix = 'AGIMPR';
-        S = agen_imana('LIST_subj');
-        sn = S.SN;
-        for j = 1:numel(sn)
-            s = sn(j);
-            subjName    = sprintf('s%02d',s);
-            fprintf('%s : ',subjName);
-            dataFileIn  = fullfile(behaDirPR,sprintf('%s_%s.dat',filePrefix,subjName));
-            dataFileOut = fullfile(behaDir,subjName,sprintf('practice_%s_ana.mat',subjName));
-            T           = []; % output structure for subject
-            D           = dload(dataFileIn);
-            runs        = unique(D.BN);
-            for r = runs'
-                trials  = D.TN(D.BN==r);
-                try
-                    MOV = movload(fullfile(behaDirPR,sprintf('%s_%s_%02d.mov',filePrefix,subjName,r)));
-                catch
-                    MOV={};
-                    keyboard
-                    continue
-                end
-                for i = trials' 
-                    d = getrow(D,D.TN==i & D.BN==r);
-                    %t = agen_fmri_trial(MOV{1,i},d,0);
-                    t = agen_imana('ANA_fmri_singleTrial_practice',MOV{1,i},d,fig);
-                    t.sn         = s;
-                    t.age        = S.age(j);
-                    t.gender     = S.gender(j);
-                    t.control    = S.control(j);
-                    t.handedness = S.handedness(j);
-                    T = addstruct(T,t);
-                end
-            end
-            save(dataFileOut,'T');
-            fprintf('...done.\n');
-        end
     case 'ANA_fmri_doAllTrialAnalysis'
         % Process force traces for fmri sessions.
         % - loop through subjects
@@ -315,8 +256,7 @@ switch what
         % d   = .dat file row for trial
         % fig = boolean (t/f) to plot individual trial plot traces to figure
         
-        % APPARENTLY THERE IS EYE-TRACKING DATA?? Not for fmri session-
-        % there was for training. I will need to find this.
+        % APPARENTLY THERE IS EYE-TRACKING DATA??
         
         % ------------------------- exp. params -----------------------------------
         % experiment params:
@@ -373,21 +313,22 @@ switch what
         idx2 = idxPress:idxRelease; % during press movement only (press onset to release)
         preM = 1:idxGo-1;   % time before go cue onset
         % --------------
-% %         % Fancy onset detection (in ms):
-% %         if ~d.isError
-% %             % detect onset using MACC algorithim from Botzer and Karniel 2009
-% %             % (https://doi.org/10.3389/neuro.20.002.2009):
-% %             RTmacc = MACCInitV4(Force(idxGo:end,idxActive),1/sampHz); 
-% %             T.RTmacc = RTmacc*1000; % convert onset time (seconds) to ms
-% %             idxMACC  = idxGo-1 + T.RTmacc/((1/sampHz)*1000); % find idx of onset time from start of trial 
-% %             idx2     = idxMACC:idxRelease;
-% %             T.MTmacc = numel(idx2)*((1/sampHz)*1000); % movement time 
-% %         elseif d.isError
-% %             % if error in trial, skip fancy onset detection:
-% %             T.RTmacc = nan;
-% %             T.MTmacc = nan;
-% %             idxMACC  = nan;
-% %         end
+        % Onset detection (in ms):
+        % - using MACC algorithim from Botzer and Karniel 2009
+        % (https://doi.org/10.3389/neuro.20.002.2009)
+        if ~d.isError
+            % detect onset in seconds (relative to go cue onset):
+            RTmacc = MACCInitV4(Force(idxGo:end,idxActive),1/sampHz); 
+            T.RTmacc = RTmacc*1000; % convert onset time (seconds) to ms
+            idxMACC  = idxGo-1 + T.RTmacc/((1/sampHz)*1000); % find idx of onset time from start of trial 
+            idx2     = idxMACC:idxRelease;
+            T.MTmacc = numel(idx2)*((1/sampHz)*1000);
+        elseif d.isError
+            % if error in trial, skip fancy onset detection:
+            T.RTmacc = nan;
+            T.MTmacc = nan;
+            idxMACC  = nan;
+        end
         % --------------
         % compute force values
         T.peakF      = max(Force(idx1,:));
@@ -421,7 +362,7 @@ switch what
         T.tooSlow        = d.tooSlow;
         T.wrongDigit     = d.digit~=d.digitPressed;
         T.wrongHand      = d.hand~=d.handPressed;
-        T.numErrors      = T.tooLate + T.tooSlow + T.wrongDigit + T.wrongHand;
+        T.numErrors      = d.numErrors;
         T.stimSide       = d.stimside;
         T.digitCued      = digits(cuedHand & cuedDigit);
         T.handCued       = hand(cuedHand & cuedDigit);
@@ -434,125 +375,6 @@ switch what
         if fig
             fprintf('\nrun %02d trial %02d',d.BN,d.TN);
             agen_imana('ANA_fmri_plotTrialForces',time,Force,idxGo,idxMACC,T.handCued,T.digitCued);
-        end
-        varargout = {T};
-    case 'ANA_fmri_singleTrial_practice'
-        % Script to process force traces for agenesis fmri experiment.
-        % mov = .mov data trace for trial
-        % d   = .dat file row for trial
-        % fig = boolean (t/f) to plot individual trial plot traces to figure
-        
-        % APPARENTLY THERE IS EYE-TRACKING DATA?? Not for fmri session-
-        % there was for training. I will need to find this.
-        
-        % ------------------------- exp. params -----------------------------------
-        % experiment params:
-        % feedbackTime = 250;  % ms- not used?
-        % pressThres   = 0.1;  % % of MVC (variable across participants and fingers)
-        % releaseThres = 0.08  % % of MVC (variable across participants and fingers)
-        % maxTime      = 5500; % ms (max time of each trial)
-        
-        % ------------------------- .mov file info --------------------------------
-        % .mov file:
-        % col 1 -> state
-        % col 2 -> ??
-        % col 3 -> TR timer??
-        % col 4 -> eyeX
-        % col 5 -> eyeY
-        % col 6 -> time
-        % col 7:16-> digit forces (left thumb:little, right thumb:little)
-        
-        % deal with inputs
-        mov = varargin{1}; % .mov data trace for trial
-        d   = varargin{2}; % .dat file row for trial
-        fig = varargin{3}; % boolean (t/f) to plot individual trial plot traces to figure
-        % housekeeping
-        hand      = kron([1,2],ones(1,5)); % 1-left, 2-right
-        digits    = kron([1,1],1:5); % 1-thumb, 5-little
-        cuedHand  = hand==d.hand;    % cued hand
-        cuedDigit = digits==d.digit; % cued digit
-        idxActive = cuedHand & cuedDigit;
-        T         = [];              % output structure
-        d.isError = d.tooLate==1 | d.tooSlow==1 | d.numErrors>0 | d.digit~=d.digitPressed | d.hand~=d.handPressed;
-        
-        % --------------
-        % Extract data:
-        state   = mov(:,1);        % trial state (3 = wait announce, 5 = wait for response, 7 = wait for release)
-        time    = mov(:,6);        % time (ms)
-        Force   = mov(:,7:16);     % 5 = left thumb, 10 = right thumb
-        eyeX    = mov(:,4);
-        eyeY    = mov(:,5);
-        if length(unique(state))==1
-            fprintf('run %02d trial %02d is missing data\n',d.BN,d.TN);
-            return;
-        end
-        
-        % --------------
-        % smooth force traces:
-        fwhm    = 0.05;                                 % sec (fwhm of gaussian smoothing kernel)
-        sampHz  = 1000/(unique(diff(time)));            % Hz (behavioural sampling rate)
-        sigma   = (fwhm*sampHz) / (2*sqrt(2*log(2)));   % estimate gaussian sigma according to desired fwhm of smoothing kernel
-        Force   = smooth_kernel(Force,sigma);           % smooth force traces
-        
-        % --------------
-        % Locate indices for behavioural/task events
-        % - state timing events  
-        idxGo      = find(state==5,1,'first'); % go cue on
-        idxPress   = find(state==7,1,'first'); % press onset (press force > press thres.)
-        idxRelease = find(state==7,1,'last');  % press release (force < release thres.)
-        idx1 = idxGo:idxRelease; % go onset to end of release
-        idx2 = idxPress:idxRelease; % during press movement only (press onset to release)
-        preM = 1:idxGo-1;   % time before go cue onset
-
-        % --------------
-        % compute force values
-        T.peakF      = max(Force(idx1,:));
-        T.peakFcued  = T.peakF(idxActive);
-        T.meanFcued  = mean(Force(idx2,idxActive));
-        
-        % --------------
-        % calc enslaving on same hand
-        T.enslavingForce  = mean(max(Force(idx2,cuedHand & ~cuedDigit)));
-        
-        % --------------
-        % calc mirroring across fingers on opp hand (according to Ejaz et al.,
-        % Brain 2018):
-        % (1) remove resting baseline force on each finger prior to go cue onset
-        oppForce = Force(idx1,~cuedHand) - mean(Force(preM,~cuedHand));
-        % (2) peak force on passive hand is calculated as peak averaged force on
-        % the fingers during movement window of trial:
-        T.mirroringForce = max(oppForce);
-        % (3) compare force traces to ensure passive force was specific to mirroring 
-        % and not due to spurious finger presses of the passive hand. Do
-        % this by averaging forces across fingers in active and passive
-        % hands separately, then correlating these avg. force traces. Do
-        % this only for finger forces applied after onset of go cue.
-        actTrace = mean(Force(idx2,cuedHand),2);
-        pasTrace = mean(Force(idx2,~cuedHand),2);
-        T.corrAvgForces = corr(actTrace,pasTrace);
-        
-        % --------------
-        % Add indexing ouptut fields for trial
-        T.RTpressThres   = d.RT;
-        T.MTpressThres   = d.MT;
-        T.isError        = d.isError;
-        T.tooLate        = d.tooLate;
-        T.tooSlow        = d.tooSlow;
-        T.wrongDigit     = d.digit~=d.digitPressed;
-        T.wrongHand      = d.hand~=d.handPressed;
-        T.numErrors      = T.tooLate + T.tooSlow + T.wrongDigit + T.wrongHand;
-        T.stimSide       = d.stimside;
-        T.digitCued      = digits(cuedHand & cuedDigit);
-        T.handCued       = hand(cuedHand & cuedDigit);
-        T.digitPressed   = d.digitPressed;
-        T.handPressed    = d.handPressed;
-        T.run            = d.BN;
-        T.trial          = d.TN;
-        
-        % plot trial?
-        if fig
-            fprintf('\nrun %02d trial %02d',d.BN,d.TN);
-            agen_imana('ANA_fmri_plotTrialForces',time,Force,idxGo,[],T.handCued,T.digitCued);
         end
         varargout = {T};
     case 'ANA_fmri_plotTrialForces'
@@ -602,7 +424,7 @@ switch what
             drawline(time(idxGo),'dir','vert','linestyle','-');   % go cue on
             if cuedHand==i
                try
-                   drawline(time(idxMACC),'dir','vert','linestyle','-','color',clr{cuedDigit},'linewidth',2); % estimated movement onset 
+                   drawline(time(idxMACC),'dir','vert','linestyle','-','color',clr{cuedDigit}); % estimated movement onset 
                catch
                    fprintf('...no onset detected (error trial)');
                end
@@ -612,41 +434,7 @@ switch what
         end
 
         keyboard;
-    
-    case 'BEHA_loadBehaData_practice'
-        % load subjects' trial data structures from MOV analysis
-        % Data is from practice sessions- not the scanner sessions!
-        removeErrors=1; % return datastructure with error trials removed?
-        vararginoptions(varargin,{'removeErrors'});
-        S = agen_imana('LIST_subj');
-        D = []; % output structure
-        for s=S.SN'
-            load(fullfile(behaDir,sprintf('s%02d',s),sprintf('practice_s%02d_ana.mat',s))); % loads T
-            D = addstruct(D,T);
-        end
-        if removeErrors
-            D = getrow(D,~D.isError); % keep correct trials only
-        else
-            warning('behaviour datastructure contains error trials')
-        end
-        % assign condition #s to appropriate trials (these tts are those
-        % used in fmri analyses):
-        D.tt  = nan(size(D.sn));
-        D.cue = D.tt;
-        T = agen_imana('LIST_tt');
-        for tt=1:20
-            idx = D.stimSide==T.stimSide(tt) & D.handCued==T.hand(tt) & D.digitCued==T.digit(tt);
-            D.tt(idx)  = tt;
-            D.cue(idx) = cue(tt);
-        end
-        % calc mirroring and enslaving as N per 1N applied force
-        D.mirroringNpattern = D.mirroringForce./D.peakFcued;
-        D.mirroringN  = mean(D.mirroringNpattern,2);
-        D.enslavingN  = D.enslavingForce./D.peakFcued;
-        D.patient     = ~D.control;
-        D.group       = D.patient+1;
-        D.crossedType = [D.handCued~=D.stimSide] +1;
-        varargout = {D}; 
+        
     case 'BEHA_loadBehaData'
         % load subjects' trial data structures from MOV analysis
         removeErrors=1; % return datastructure with error trials removed?
@@ -663,23 +451,11 @@ switch what
         else
             warning('behaviour datastructure contains error trials')
         end
-        % assign condition #s to appropriate trials (these tts are those
-        % used in fmri analyses):
-        D.tt  = nan(size(D.sn));
-        D.cue = D.tt;
-        T = agen_imana('LIST_tt');
-        for tt=1:20
-            idx = D.stimSide==T.stimSide(tt) & D.handCued==T.hand(tt) & D.digitCued==T.digit(tt);
-            D.tt(idx)  = tt;
-            D.cue(idx) = cue(tt);
-        end
         % calc mirroring and enslaving as N per 1N applied force
         D.mirroringNpattern = D.mirroringForce./D.peakFcued;
-        D.mirroringN  = mean(D.mirroringNpattern,2);
-        D.enslavingN  = D.enslavingForce./D.peakFcued;
-        D.patient     = ~D.control;
-        D.group       = D.patient+1;
-        D.crossedType = [D.handCued~=D.stimSide] +1;
+        D.mirroringN = mean(D.mirroringNpattern,2);
+        D.enslavingN = D.enslavingForce./D.peakFcued;
+        D.patient    = ~D.control;
         varargout = {D}; 
     case 'BEHA_getMirroring'
         % centralized case to extract mirroring data from fmri trials
@@ -716,124 +492,162 @@ switch what
         varargout = {D,Pa,Ps,T};
         
     case 'BEHA_plotErrorRate'
-        % calculate error rates per crossed type (uncrossed, crossed)
-        hands  = {'left','right'};
-        groups  = {'controls','patients'};
+        % calculate error rates per condition for 2 criteria:
+        % - any error
+        % - too late (response initiation)
+        labels  = {'left stim','right stim'};
+        titles  = {'controls','patients','controls','patients'};
+        ylabels = {'% incorrect trials','% incorrect trials','% too late','% too LATE'};
         
         % get data
         D = agen_imana('BEHA_loadBehaData','removeErrors',0);
         % count number of incorrect trials per hand and stim side (i.e.
         % integrate across different digits)
         D.numTrials = ones(size(D.sn));
-        D = tapply(D,{'sn','group','stimSide','handCued','crossedType'},{'numErrors','sum'},...
-            {'isError','sum'},{'tooLate','sum'},{'tooSlow','sum'},{'wrongDigit','sum'},{'wrongHand','sum'},{'numTrials','sum'});
-        % calc # of total errors per trial (does not need to be between 0:1)
-        D.perError      = [D.numErrors./D.numTrials];
-        % calc proportion of error types, given total # errors:
-        D.perLate = D.tooLate./D.numErrors;
-        D.perSlow = D.tooSlow./D.numErrors;
-        D.perWrongDigit = D.wrongDigit./D.numErrors;
-        D.perWrongHand = D.wrongHand./D.numErrors;
+        D = tapply(D,{'sn','control','patient','stimSide','handCued'},...
+            {'isError','sum'},{'tooLate','sum'},{'wrongDigit','sum'},{'wrongHand','sum'},{'numTrials','sum'});
+        D.perError = D.isError./D.numTrials;
+        D.perLate  = D.tooLate./D.numTrials;
+        D.perWrongDigit = D.wrongDigit./D.numTrials;
+        D.perWrongHand  = D.wrongHand./D.numTrials;
         
-        D.errorToPlot = D.wrongDigit./D.numTrials;
+        warning off
+        % plot overall error rate (row 1)
+        style.use('default');
+        subplot(1,2,1); % controls
+        plt.box([D.handCued D.stimSide],D.perError.*100,'subset',D.control==1,'split',D.handCued==D.stimSide);
+        subplot(1,2,2); % patients
+        plt.box([D.handCued D.stimSide],D.perError.*100,'subset',D.patient==1,'split',D.handCued==D.stimSide);
         
-%         D.perError      = [D.isError./D.numTrials];
-%         D.perLate       = [D.tooLate./D.numTrials];
-%         D.perWrongDigit = [D.wrongDigit./D.numTrials];
-%         D.perWrongHand  = [D.wrongHand./D.numTrials];
-
-        for gg=1:2 % controls, patients
-            subplot(1,2,gg);
-            barplot([D.handCued D.crossedType],D.errorToPlot.*100,'subset',D.group==gg,'split',D.crossedType);
-            % label:
-            title(groups{gg});
-            ylabel('errors');
-            set(gca,'xticklabel',{'left - uncross','left - cross','right - uncross','right - cross'},...
-                'xticklabelrotation',45);
+        anovaMixed(D.perError,D.sn,'within',[D.stimSide D.handCued],{'stimSide','hand'},'between',D.control,{'group'});
+        
+        % plot percent trials marked with response that was too late
+%          subplot(2,2,3); % controls
+%          plt.dot([D.handCued D.stimSide],D.perWrongDigit.*100,'subset',D.control==1,'split',D.handCued==D.stimSide);
+%          subplot(2,2,4); % patients
+%          plt.dot([D.handCued D.stimSide],D.perWrongDigit.*100,'subset',D.patient==1,'split',D.handCued==D.stimSide);
+        warning on
+        
+        % label plots
+        for i = 1:2%4
+            subplot(1,2,i);
+            xt=get(gca,'xtick');
+            if i<3
+                ylim([-10 100]);
+            else
+                ylim([-10 100]);
+            end
+            drawline(0,'dir','horz');
+            text(xt(1)-xt(1)*0.1,-5,'left hand');
+            text(xt(3)-xt(3)*0.05,-5,'right hand');
+            set(gca,'xticklabel',labels,'xticklabelrotation',45);
+            title(titles{i});
+            ylabel(ylabels{i});
+            drawline(xt(2)+0.5*(xt(3)-xt(2)),'dir','vert','linestyle',':')
             legend off
         end
-        anovaMixed(D.errorToPlot,D.sn,'within',[D.stimSide D.handCued],{'stimSide','hand'},'between',D.group,{'group'});
-                
+        
         varargout = {D};
     case 'BEHA_plotRTraw'
-        % plot median rxn times from PRACTICE data
-        normalize = 1; % centre sbuject variability about the median RT
-        
-        % get data avg. per stimside/hand pair (i.e. 4 pairs)
-        D = agen_imana('BEHA_loadBehaData','removeErrors',1); % subject data
-        D.RT = D.RTpressThres;
-        D = tapply(D,{'sn','group','stimSide','handCued','crossedType'},{'RT','median'});
-        
-        sty = style.custom({'darkgray','blue'});
-        sty.box.gapwidth = [0.8 0.6 0.4 0];
-        plt.box([D.group D.handCued D.stimSide],D.RT,'split',[D.group D.crossedType],'style',sty,'plotall',1);
-        set(gca,'xticklabel',{'Lh - Ls','Lh - Rs','Rh - Ls','Rh - Rs'},'xticklabelrotation',45);
-        ylabel('median RT (ms)');
-        xlabel('controls------patients');
-        title('RT imaging');
-
-        anovaMixed(D.RT,D.sn,'within',[D.stimSide D.handCued],{'stimSide','hand'},'between',D.group,{'group'});
-        
-        varargout = {D};
-    case 'BEHA_plotRTraw_practice'
-        % plot median rxn times from PRACTICE data
-        
-        % get data avg. per stimside/hand pair (i.e. 4 pairs)
-        D = agen_imana('BEHA_loadBehaData_practice','removeErrors',1); % subject data
-        D.RT = D.RTpressThres;
-        D = tapply(D,{'sn','group','stimSide','handCued','crossedType'},{'RT','median'});
-        
-        sty = style.custom({'darkgray','blue'});
-        sty.box.gapwidth = [0.8 0.6 0.4 0];
-        plt.box([D.group D.handCued D.stimSide],D.RT,'split',[D.group D.crossedType],'style',sty,'plotall',1);
-        set(gca,'xticklabel',{'Lh - Ls','Lh - Rs','Rh - Ls','Rh - Rs'},'xticklabelrotation',45);
-        ylabel('median RT (ms)');
-        xlabel('controls------patients');
-        title('RT practice');
-
-        anovaMixed(D.RT,D.sn,'within',[D.stimSide D.handCued],{'stimSide','hand'},'between',D.group,{'group'});
-        
-        varargout = {D};
-    
-    case 'BEHA_plotRTnorm'
-        % plot normalized RTs (incongruent / congruent RTs)
-        hands  = {'left hand','right hand'};
+        % plot rxn times per trial
+        labels  = {'left sitm','right stim'};
+        titles  = {'controls','patients'};
+        ylabels = {'RT (ms)','RT (ms)'};
         
         % get data avg. per stimside/hand pair (i.e. 4 pairs)
         D = agen_imana('BEHA_loadBehaData','removeErrors',1); % subject data
         D.RT = D.RTpressThres;
 %        D.RT = D.RTmacc;
-        D = tapply(D,{'sn','group','handCued','stimSide','crossedType'},{'RT','mean'});
-        % normalize RTs
-        idx = D.crossedType==1;
-        T.RTnorm = D.RT(D.crossedType==2) ./ D.RT(D.crossedType==1); % normalize RT of crossed conds relative to uncrossed on same hand
-        T.hand   = D.handCued(idx);
-        T.group  = D.group(idx);
-        T.sn     = D.sn(idx);
-
-        anovaMixed(T.RTnorm,T.sn,'within',[T.hand],{'hand'},'between',T.group,{'group'});
+        D = tapply(D,{'sn','control','stimSide','handCued'},{'RT','mean'});
         
-        for hh=1:2 % left, right hand
-            idx = T.hand==hh;
-            subplot(1,2,hh);
-            barplot(T.group,T.RTnorm,'subset',idx,'split',T.group);
-% %             % scatterplot dots (one per subj per cond):
-% %             plt.box(T.group,T.RTnorm,'subset',idx,'split',T.group,'style',sty,'plotall',2);
-% %             % group mean difference as line:
-% %             a = get(gca);
-% %             meanC = mean(T.RTnorm(T.group==1 & idx));
-% %             meanP = mean(T.RTnorm(T.group==2 & idx));
-% %             hold on
-% %             plot(a.XTick(1),meanC,'o','MarkerEdgeColor','k','MarkerFaceColor',sty.general.linecolor{1});
-% %             plot(a.XTick(2),meanP,'o','MarkerEdgeColor','k','MarkerFaceColor',sty.general.linecolor{2});
-% %             line(a.XTick',[meanC meanP],'linestyle',':','color','k','linewidth',2);
-% %             hold off
-            % label:
-            title(hands{hh});
-            ylabel('RT (normalized)');
-            set(gca,'xticklabel',{'control','patients'});
+        % plot raw RT
+        style.use('default');
+        subplot(1,2,1); % controls
+        plt.box([D.handCued D.stimSide],D.RT,'subset',D.control==1,'split',D.handCued==D.stimSide,'plotall',2);
+        subplot(1,2,2); % patients
+        plt.box([D.handCued D.stimSide],D.RT,'subset',D.control==0,'split',D.handCued==D.stimSide,'plotall',2);
+        plt.match('y');
+        
+        anovaMixed(D.RT,D.sn,'within',[D.stimSide D.handCued],{'stimSide','hand'},'between',D.control,{'group'});
+        
+        % label plots
+        for i = 1:2
+            subplot(1,2,i);
+            title(titles{i});
+            ylabel(ylabels{i});
+            %set(gca,'xticklabel',labels);
+            %ylim([200 1000]);
+            set(gca,'xticklabel',labels,'xticklabelrotation',45);
+            xt=get(gca,'xtick');
+            drawline(xt(2)+0.5*(xt(3)-xt(2)),'dir','vert','linestyle',':');
+            text(xt(1)-xt(1)*0.1,250,'left hand');
+            text(xt(3)-xt(3)*0.05,250,'right hand');
+            legend off
+            % draw lines connecting subject data points
+            y = pivottable(D.sn,D.stimSide,D.RT,'mean','subset',D.control==2-i & D.handCued==1);
+            drawSubjLines(xt(1:2),y);
+            y = pivottable(D.sn,D.stimSide,D.RT,'mean','subset',D.control==2-i & D.handCued==2);
+            drawSubjLines(xt(3:4),y);
+        end
+        
+        varargout = {D};
+    case 'BEHA_plotRTnorm'
+        % plot normalized RTs (incongruent / congruent RTs)
+        labels  = {'left hand','right hand'};
+        titles  = {'controls','patients'};
+        ylabels = {'normalized RT','normalized RT'};
+        
+        % get data avg. per stimside/hand pair (i.e. 4 pairs)
+        D = agen_imana('BEHA_loadBehaData','removeErrors',1); % subject data
+         D.RT = D.RTpressThres;
+%        D.RT = D.RTmacc;
+        D = tapply(D,{'sn','control','handCued','stimSide'},{'RT','mean'});
+        
+        % normalize RTs
+        Tc    = getrow(D,D.stimSide==D.handCued); % congruent   (stimulation and responses on same side)
+        Tic   = getrow(D,D.stimSide~=D.handCued); % incongruent (stimulation and responses on opposite side)
+        % * TO CHECK: Tc.handCued==Tic.handCued, Tc.stimSide~=Tic.stimSide
+        T.RTnorm = Tic.RT ./ Tc.RT; % normalize incongruent RTs (mag increase of RT when cue is presented in opposite hemifield)
+        % add indexing fields
+        T.hand     = Tc.handCued;
+        T.control  = Tc.control;
+        T.patient  = ~Tc.control;
+        T.group    = T.patient+1;
+        T.sn       = Tc.sn;
+        clear Tc Tic
+        
+        anovaMixed(T.RTnorm,T.sn,'within',[T.hand],{'hand'},'between',T.control,{'group'});
+        
+        % plot RT ratios
+        style.use('default');
+        subplot(1,3,1); % plot controls
+        plt.box(T.hand,T.RTnorm,'plotall',2,'subset',T.control==1);
+        subplot(1,3,2); % plot patients
+        plt.box(T.hand,T.RTnorm,'plotall',2,'subset',T.patient==1);
+        
+        % label plots
+        for i = 1:2
+            subplot(1,3,i);
+            title(titles{i});
+            ylabel(ylabels{i});
+            set(gca,'xticklabel',labels);
+            %set(gca,'xticklabel',labels,'xticklabelrotation',45);
+            % draw lines connecting subject data points
+            y = pivottable(T.sn,T.hand,T.RTnorm,'mean','subset',T.group==i);
+            drawSubjLines(get(gca,'xtick'),y);
+            drawline(1,'dir','horz','linestyle',':');
             legend off
         end
+        
+        % avg. RTnorm across hands within group and plot:
+        t=tapply(T,{'sn','group'},{'RTnorm','mean'});
+        subplot(1,3,3);
+        plt.box(t.group,t.RTnorm);
+        title('avg across hands');
+        ylabel(ylabels{1});
+        set(gca,'xticklabel',{'controls','patients'});
+        drawline(1,'dir','horz','linestyle',':');
+        plt.match('y');
         
         varargout = {T}; 
     case 'BEHA_plotEnslaving'
@@ -1099,51 +913,6 @@ switch what
         % NOTE:
         % Overwrites meanepi, unless you update in step one, which saves it
         % as rmeanepi.
-    case 'PREP_make_samealign'                                              % STEP 1.9   :  Align to first image (rbmeanepi_* of first session)
-        % realign some subjects data b/c coregistration was bad
-        prefix  = 'u';
-        sn=[];
-        vararginoptions(varargin,{'sn'});
-        
-        S = agen_imana('LIST_subj');
-        subjname = S.ID{S.SN==sn};
-        
-        cd(fullfile(imagingDir,subjname));
-
-        % Select image for reference
-        P{1} = fullfile(imagingDir,subjname,sprintf('rbbmeanepi_%s.nii',subjname));
-
-        % Select images to be realigned
-        Q={};
-        for r=1:runs(sn)
-            for i=1:numTRs-numDummys
-                Q{end+1}    = fullfile(imagingDir,subjname,...
-                    sprintf('%s%s_run_%02d.nii,%d',prefix, subjname,r,i));
-            end
-        end
-
-        % Run spmj_makesamealign_nifti to bring all functional runs into
-        % same space as realigned mean epis
-        spmj_makesamealign_nifti(char(P),char(Q));
-        fprintf('Done. Run spmj_checksamealign to check alignment.\n')
-        %spmj_checksamealign
-    case 'PREP_make_maskImage'                                              % STEP 1.11  :  Make mask images (noskull and gray_only)
-        vararginoptions(varargin,{'sn'});
-        S = agen_imana('LIST_subj');
-        subjname = S.ID{S.SN==sn};
-        cd(fullfile(anatomicalDir,subjname));
-
-        nam{1}  = fullfile(imagingDir,subjname, ['rbbmeanepi_' subjname '.nii']);
-        nam{2}  = fullfile(anatomicalDir, subjname, ['c1' subjname, '_anatomical.nii']);
-        nam{3}  = fullfile(anatomicalDir, subjname, ['c2' subjname, '_anatomical.nii']);
-        nam{4}  = fullfile(anatomicalDir, subjname, ['c3' subjname, '_anatomical.nii']);
-        spm_imcalc_ui(nam, 'rmask_noskull.nii', 'i1>1 & (i2+i3+i4)>0.2')
-
-        nam={};
-        nam{1}  = fullfile(imagingDir,subjname, ['rbbmeanepi_' subjname '.nii']);
-        nam{2}  = fullfile(anatomicalDir, subjname, ['c1' subjname, '_anatomical.nii']);
-        spm_imcalc_ui(nam, 'rmask_gray.nii', 'i1>1 & i2>0.4')
-
         
     case '0' % ------------ GLM: SPM GLM fitting. Expand for more info. ---
         % The GLM cases fit general linear models to subject data with 
@@ -1160,173 +929,100 @@ switch what
         %S=getrow(S,S.(sprintf('glm%d',glm))==0 & S.control==0); % get subj # for those who don't have this glm completed
         sn=S.SN';
         % You can call this case to do all the GLM estimation and contrasts.
-        for g = glm
-            for s=sn
+        for s=sn
+            for g = glm
                 fprintf('%s',S.ID{S.SN==s});
                 agen_imana('GLM_make','sn',s,'glm',g);
                 agen_imana('GLM_estimate','sn',s,'glm',g);
-                agen_imana('GLM_contrast','sn',s,'glm',g);
-                agen_imana('PSC_calc','sn',s,'glm',g);
+                if g==3
+                    agen_imana(['GLM_contrast' num2str(g)],'sn',s);
+                    agen_imana('PSC_calc','sn',s,'glm',g);
+                end
+                if g==4
+                    agen_imana(['GLM_contrast' num2str(g)],'sn',s);
+                    agen_imana('PSC_calc','sn',s,'glm',g);
+                end
             end
-            agen_imana('ROI_getBetas','glm',g);
         end
-        R=agen_imana('ROI_pattConsist','roi',[1:16],'glm',glm);
-        varargout = {R};
+    case 'GLM3_hrfParams'
+        % case to store hrf params per participant
+        [~,d_hrf]      = spm_hrf(TR_length); % default hrf params
+        subj_hrfParams = {[4.5 7 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [],...
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4.3 11 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [5.25 17 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [5.5 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4 14 1.2945 d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4.6 14 1.2945 d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [5 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...
+                          [4.5 11 d_hrf(3) d_hrf(4) 1.2 0.5]};
+        varargout = {subj_hrfParams};
+    case 'GLM4_hrfParams'
+        % case to store hrf params per participant
+        % optimized fits for M1 (both hemispheres)
+        [~,d_hrf]      = spm_hrf(TR_length); % default hrf params
+        subj_hrfParams = {[4 9.2 d_hrf(3) d_hrf(4) 2 d_hrf(6)],...% ***
+                          [],...
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [d_hrf(1) d_hrf(2) d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [5.25 17 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [4 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [5.5 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [4 14 1.3 d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [3 12 0.6 d_hrf(4) d_hrf(5) 1],...% ***
+                          [5 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [3.05 14 d_hrf(3) d_hrf(4) d_hrf(5) d_hrf(6)],...% ***
+                          [4.5 11 d_hrf(3) d_hrf(4) d_hrf(5) 0.5]};% ***
+        varargout = {subj_hrfParams};
     case 'GLM_make'                     % STEP 2.1      WLS glm, with high pass filtering, two masks
         sn = [];
         glm = [];
         vararginoptions(varargin,{'sn','glm'});
         prefix = 'u';
         T      = [];
-        dur    = 2;            % secs (length of task dur, not trial dur)
+        dur    = 0;            % secs (length of task dur, not trial dur)
         S = agen_imana('LIST_subj');
 
         subjName = S.ID{S.SN==sn};
         
-        
+        % Define number of regressors in glm
+        switch glm 
+            case 1
+                % glm was done by Naveed, so let's keep that one around
+                error('glm1 already exists')
+            case 2
+                % model all conditions together and use to optimize hrf fit
+                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
+                hrf_cutoff = inf;
+                cvi_type   = 'fast';
+                numConds   = 1; % test optimized fits
+            case 3 % M1 & V1 optimized
+                % model all conditions, don't exclude error trials, using optimized hrf 
+                subj_hrfParams = agen_imana('GLM3_hrfParams');
+                hrf_params = subj_hrfParams{sn};
+                hrf_cutoff = inf;
+                cvi_type   = 'fast';
+                numConds   = 20; % all conditions
+            case 4 % M1 optimized
+                % model all conditions, don't exclude error trials, using optimized hrf 
+                subj_hrfParams = agen_imana('GLM4_hrfParams');
+                hrf_params = subj_hrfParams{sn};
+                hrf_cutoff = inf;
+                cvi_type   = 'fast';
+                numConds   = 20; % all conditions
+        end
+
         % trial type information
         D       = dload(fullfile(baseDir, 'behavior',subjName,['AGIM_',subjName,'.dat']));
         D.tt    = D.digit + (D.hand-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-        
-        % Define number of regressors in glm
-        switch glm 
-            case 1 % 0 onset shift, no movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = false;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 0;
-            case 2 % 0.5 onset shift, no movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = false;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 0.5;
-            case 3 % 1 onset shift, no movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = false;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 1;
-            case 4 % 1.5 onset shift, no movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = false;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 1.5;
-            case 5 % 2 onset shift, no movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = false;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 2;
-            case 6 % 0 onset shift, include movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = true;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 0;
-            case 7 % 0.5 onset shift, include movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = true;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 0.5;
-            case 8 % 1 onset shift, include movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = true;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 1;
-            case 9 % 1.5 onset shift, include movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = true;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 1.5;
-            case 10 % 2 onset shift, include movement params
-                % model all conditions together and use to optimize hrf fit
-                [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-                hrf_params(1) = 2;
-                hrf_params(2) = 6;
-                hrf_cutoff = inf;
-                cvi_type   = 'fast';
-                numConds   = 20; % test optimized fits
-                moveReg    = true;
-                % label conditions based on behaviour, not cues:
-                D.tt = D.digitPressed + (D.handPressed-1)*5 + (D.stimside-1)*10;   % label conditions 1-20
-                D.tt(D.tt<0)=99; % trials where participants made no response
-                onsetShift = 2;
-            
-        end
-   
         % calculate onset times (in seconds), correcting for removed dummy scans
-        D.onset = (D.startTimeMeas + D.pretime)./1000 - TR_length*numDummys; % correct timing for removed dummy scans (onset is in SECONDS)
-        D.onset = D.onset + onsetShift; % adjust onset times
-        
+        D.onset = (D.startTimeMeas + D.pretime)./1000 - TR_length*numDummys; % correct timing for removed dummy scans
+            
         % make glm directory (if necessary)
         J.dir = {fullfile(glmDir{glm}, subjName)};
         if ~exist(J.dir{1})
@@ -1344,69 +1040,40 @@ switch what
                 N{i} = fullfile(baseDir, 'imaging_data',subjName,sprintf('%s%s_run_%02d.nii,%d',prefix,subjName,r,i));
             end
             J.sess(r).scans = N;
-            xIdx = 1; % regressor index for this run
             for c=1:numConds % loop through conditions
                 switch glm
-                    case {1,2,3,4,5,6,7,8,9,10}
+                    case {1,2}
+                        idx	= logical(R.tt>0);     
+                        J.sess(r).cond(c).name = 'task';
+                    case {3,4}
                         % Model task regressors
                         % include all trials regardless of accuracy
-                        cIdx = find(R.tt==c); % find indx of all trials in run of that condition 
-                        if isempty(cIdx)
-                            warning('%s run %02d missing condition %d',subjName,r,c);
-                            continue
-                        end
-                        J.sess(r).cond(xIdx).name = sprintf('side%d_hand%d_digit%d',R.stimside(cIdx(1)),R.hand(cIdx(1)),R.digit(cIdx(1)));
+                        idx	= find(R.tt==c); % find indx of all trials in run of that condition 
+                        J.sess(r).cond(c).name = sprintf('side%d_hand%d_digit%d',R.stimside(idx(1)),R.hand(idx(1)),R.digit(idx(1)));
                 end
-                J.sess(r).cond(xIdx).onset    = R.onset(cIdx);
-                J.sess(r).cond(xIdx).duration = dur;
-                J.sess(r).cond(xIdx).tmod      = 0;
-                J.sess(r).cond(xIdx).orth      = 0;
-                J.sess(r).cond(xIdx).pmod      = struct('name', {}, 'param', {}, 'poly', {});
+                J.sess(r).cond(c).onset    = R.onset(idx);
+                J.sess(r).cond(c).duration = dur;
+                J.sess(r).cond(c).tmod      = 0;
+                J.sess(r).cond(c).orth      = 0;
+                J.sess(r).cond(c).pmod      = struct('name', {}, 'param', {}, 'poly', {});
                 % fields for SPM_info file relating to this regressor
                 t.sn        = sn;
                 t.run       = r;
                 t.glm       = glm;
                 t.regressorNum = rNum;
-                t.stimside  = R.stimside(cIdx(1));
+                t.stimside  = R.stimside(idx(1));
                 t.cue       = cue(c);
-                t.hand      = R.hand(cIdx(1));
-                t.digit     = R.digit(cIdx(1));
+                t.hand      = R.hand(idx(1));
+                t.digit     = R.digit(idx(1));
                 t.tt        = c;
                 t.crossed   = t.stimside~=t.hand;
                 t.uncrossed = t.stimside==t.hand;
                 t.regtype   = 'task';
-                t.regTask   = 1;
-                t.regMove   = 0;
-                t.onset     = {J.sess(r).cond(xIdx).onset'};
                 T           = addstruct(T,t);
-                xIdx = xIdx+1;
                 rNum = rNum+1;
             end
-            J.sess(r).regress   = struct('name', {}, 'val', {});
-            if moveReg % create movement regresors?
-                M=load(fullfile(baseDir, 'imaging_data',subjName,sprintf('rp_%s_run_%02d.txt',subjName,r)));
-                moveNames = {'Xmov','Ymov','Zmov','Ptch','Roll','Yaw '};
-                for jj=1:6
-                    J.sess(r).regress(jj).name = moveNames{jj};
-                    J.sess(r).regress(jj).val   = M(:,jj);    
-                    % add info on nuisannce regressors to spm_info struct
-                    t.regressorNum = rNum;
-                    t.stimside  = nan;
-                    t.cue       = nan;
-                    t.hand      = nan;
-                    t.digit     = nan;
-                    t.tt        = nan;
-                    t.crossed   = nan;
-                    t.uncrossed = nan;
-                    t.regtype   = 'move';
-                    t.regTask   = 0;
-                    t.regMove   = jj;
-                    T           = addstruct(T,t);
-                    rNum = rNum+1;
-                end
-            end
-            
             J.sess(r).multi     = {''};
+            J.sess(r).regress   = struct('name', {}, 'val', {});
             J.sess(r).multi_reg = {''};                               
             J.sess(r).hpf       = hrf_cutoff;	% set to 'inf' if using J.cvi = 'FAST'
         end
@@ -1439,75 +1106,10 @@ switch what
         spm_rwls_spm(SPM);
         % for checking -returns img of head movements and corrected sd vals
         % spm_rwls_resstats(SPM)
-    case 'GLM_contrast'
+    case 'GLM_contrast1'
         % Make t-stat contrasts
         sn=[];
-        glm = [];
-        vararginoptions(varargin,{'sn','glm'});
-        % housekeeping
-        S = agen_imana('LIST_subj');
-        subjName = S.ID{S.SN==sn};
-        fprintf('%s : ',subjName);
-        % Go to subject's directory (else, error thrown trying to load beta imgs)
-        subjDir = fullfile(glmDir{glm},subjName);
-        cd(subjDir);
-        % erase any current con_, spmT_, and psc_ files
-        delete(fullfile(subjDir,'con_*.nii'));
-        delete(fullfile(subjDir,'spmT_*.nii'));
-        delete(fullfile(subjDir,'psc_*.nii'));
-        % load participant data
-        load('SPM.mat');
-        SPM  = rmfield(SPM,'xCon');
-        Info = load('SPM_info.mat');
-        % - - - - - - - - - - - - - - - - 
-        % each condition (1:20)
-        for t = 1:20
-            con               = zeros(1,size(SPM.xX.X,2));
-            con(:,Info.tt==t) = 1;
-            con               = con/sum(con);
-            SPM.xCon(t)       = spm_FcUtil('Set',sprintf('cond_%d',t), 'T', 'c',con',SPM.xX.xKXs);
-        end
-        % - - - - - - - - - - - - - - - - 
-        % (21) Left stim Left hand - UNCROSSED
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==1 & Info.hand==1)  = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L_hand_L', 'T', 'c',con',SPM.xX.xKXs);
-        % (22) Left stim Right hand - CROSSED
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==1 & Info.hand==2)  = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L_hand_R', 'T', 'c',con',SPM.xX.xKXs);
-        % (23) Right stim Left hand - CROSSED
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==2 & Info.hand==1)  = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_L', 'T', 'c',con',SPM.xX.xKXs);
-        % (24) Right stim Right hand - UNCROSSED
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==2 & Info.hand==2)  = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_R', 'T', 'c',con',SPM.xX.xKXs);
-        % (25) Left visual field stimulation (irrespective of crossed or
-        % uncrossed response)
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==1) = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L', 'T', 'c',con',SPM.xX.xKXs);
-        % (26) Right visual field stimulation (irrespective of crossed or
-        % uncrossed response)
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==2) = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L', 'T', 'c',con',SPM.xX.xKXs);
-        % - - - - - - - - - - - - - - - - 
-        % calculate the constrasts
-        SPM = spm_contrasts(SPM,[1:length(SPM.xCon)]);
-        save(fullfile(subjDir,'SPM.mat'),'SPM');
-    case 'GLM_contrastBEST'
-        % Make t-stat contrasts
-        sn=[];
-        glm = 11;
+        glm = 1;
         vararginoptions(varargin,{'sn'});
         % housekeeping
         S = agen_imana('LIST_subj');
@@ -1553,24 +1155,161 @@ switch what
         con(:,Info.stimside==2 & Info.hand==2)  = 1;
         con               = con/sum(con);
         SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_R', 'T', 'c',con',SPM.xX.xKXs);
-        % (25) Left visual field stimulation (irrespective of crossed or
-        % uncrossed response)
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==1) = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L', 'T', 'c',con',SPM.xX.xKXs);
-        % (26) Right visual field stimulation (irrespective of crossed or
-        % uncrossed response)
-        con               = zeros(1,size(SPM.xX.X,2));
-        con(:,Info.stimside==2) = 1;
-        con               = con/sum(con);
-        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L', 'T', 'c',con',SPM.xX.xKXs);
-        
         % - - - - - - - - - - - - - - - - 
         % calculate the constrasts
         SPM = spm_contrasts(SPM,[1:length(SPM.xCon)]);
         save(fullfile(subjDir,'SPM.mat'),'SPM');
-    
+    case 'GLM_contrast3'
+        % Make t-stat contrasts
+        sn=[];
+        glm = 3;
+        vararginoptions(varargin,{'sn'});
+        % housekeeping
+        S = agen_imana('LIST_subj');
+        subjName = S.ID{S.SN==sn};
+        fprintf('%s : ',subjName);
+        % Go to subject's directory (else, error thrown trying to load beta imgs)
+        subjDir = fullfile(glmDir{glm},subjName);
+        cd(subjDir);
+        % erase any current con_, spmT_, and psc_ files
+        delete(fullfile(subjDir,'con_*.nii'));
+        delete(fullfile(subjDir,'spmT_*.nii'));
+        delete(fullfile(subjDir,'psc_*.nii'));
+        % load participant data
+        load('SPM.mat');
+        SPM  = rmfield(SPM,'xCon');
+        Info = load('SPM_info.mat');
+        % - - - - - - - - - - - - - - - - 
+        % each condition (1:20)
+        for t = 1:20
+            con               = zeros(1,size(SPM.xX.X,2));
+            con(:,Info.tt==t) = 1;
+            con               = con/sum(con);
+            SPM.xCon(t)       = spm_FcUtil('Set',sprintf('cond_%d',t), 'T', 'c',con',SPM.xX.xKXs);
+        end
+        % - - - - - - - - - - - - - - - - 
+        % (21) Left stim Left hand - UNCROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==1 & Info.hand==1)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L_hand_L', 'T', 'c',con',SPM.xX.xKXs);
+        % (22) Left stim Right hand - CROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==1 & Info.hand==2)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L_hand_R', 'T', 'c',con',SPM.xX.xKXs);
+        % (23) Right stim Left hand - CROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==2 & Info.hand==1)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_L', 'T', 'c',con',SPM.xX.xKXs);
+        % (24) Right stim Right hand - UNCROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==2 & Info.hand==2)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_R', 'T', 'c',con',SPM.xX.xKXs);
+%         
+%         % - - - - - - - - - - - - - - - - 
+%         % (21) avg. left stim side
+%         con               = zeros(1,size(SPM.xX.X,2));
+%         con(:,Info.stimside==1)  = 1;
+%         con               = con/sum(con);
+%         SPM.xCon(end+1)   = spm_FcUtil('Set','left_stimSide', 'T', 'c',con',SPM.xX.xKXs);
+%         % (22) avg. right stim side
+%         con               = zeros(1,size(SPM.xX.X,2));
+%         con(:,Info.stimside==2)  = 1;
+%         con               = con/sum(con);
+%         SPM.xCon(end+1)   = spm_FcUtil('Set','right_stimSide', 'T', 'c',con',SPM.xX.xKXs);
+%         % - - - - - - - - - - - - - - - - 
+%         % (23) avg. left hand response
+%         con               = zeros(1,size(SPM.xX.X,2));
+%         con(:,Info.hand==1)  = 1;
+%         con               = con/sum(con);
+%         SPM.xCon(end+1)   = spm_FcUtil('Set','left_handResponse', 'T', 'c',con',SPM.xX.xKXs);
+%         % (24) avg. right hand response
+%         con               = zeros(1,size(SPM.xX.X,2));
+%         con(:,Info.hand==2)  = 1;
+%         con               = con/sum(con);
+%         SPM.xCon(end+1)   = spm_FcUtil('Set','right_handResponse', 'T', 'c',con',SPM.xX.xKXs);
+%         % - - - - - - - - - - - - - - - - 
+%         % (25) avg. uncrossed
+%         con               = zeros(1,size(SPM.xX.X,2));
+%         con(:,Info.uncrossed==1)  = 1;
+%         con               = con/sum(con);
+%         SPM.xCon(end+1)   = spm_FcUtil('Set','avg_uncrossed', 'T', 'c',con',SPM.xX.xKXs);
+%         % (26) avg. crossed
+%         con               = zeros(1,size(SPM.xX.X,2));
+%         con(:,Info.crossed==1)  = 1;
+%         con               = con/sum(con);
+%         SPM.xCon(end+1)   = spm_FcUtil('Set','avg_crossed', 'T', 'c',con',SPM.xX.xKXs);
+%         % - - - - - - - - - - - - - - - - 
+%         % each digit per hand (27:31 left, 32:36 right hand digits)
+%         for h=1:2
+%             for d = 1:5
+%                 con               = zeros(1,size(SPM.xX.X,2));
+%                 con(:,Info.hand==h & Info.digit==d) = 1;
+%                 con               = con/sum(con);
+%                 SPM.xCon(end+1)   = spm_FcUtil('Set',sprintf('hand%d_digit%d',h,d), 'T', 'c',con',SPM.xX.xKXs);
+%             end
+%         end    
+        % - - - - - - - - - - - - - - - - 
+        % calculate the constrasts
+        SPM = spm_contrasts(SPM,[1:length(SPM.xCon)]);
+        save(fullfile(subjDir,'SPM.mat'),'SPM');
+    case 'GLM_contrast4'
+        % Make t-stat contrasts
+        sn=[];
+        glm = 4;
+        vararginoptions(varargin,{'sn'});
+        % housekeeping
+        S = agen_imana('LIST_subj');
+        subjName = S.ID{S.SN==sn};
+        fprintf('%s : ',subjName);
+        % Go to subject's directory (else, error thrown trying to load beta imgs)
+        subjDir = fullfile(glmDir{glm},subjName);
+        cd(subjDir);
+        % erase any current con_, spmT_, and psc_ files
+        delete(fullfile(subjDir,'con_*.nii'));
+        delete(fullfile(subjDir,'spmT_*.nii'));
+        delete(fullfile(subjDir,'psc_*.nii'));
+        % load participant data
+        load('SPM.mat');
+        SPM  = rmfield(SPM,'xCon');
+        Info = load('SPM_info.mat');
+        % - - - - - - - - - - - - - - - - 
+        % each condition (1:20)
+        for t = 1:20
+            con               = zeros(1,size(SPM.xX.X,2));
+            con(:,Info.tt==t) = 1;
+            con               = con/sum(con);
+            SPM.xCon(t)       = spm_FcUtil('Set',sprintf('cond_%d',t), 'T', 'c',con',SPM.xX.xKXs);
+        end
+        % - - - - - - - - - - - - - - - - 
+        % (21) Left stim Left hand - UNCROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==1 & Info.hand==1)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L_hand_L', 'T', 'c',con',SPM.xX.xKXs);
+        % (22) Left stim Right hand - CROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==1 & Info.hand==2)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_L_hand_R', 'T', 'c',con',SPM.xX.xKXs);
+        % (23) Right stim Left hand - CROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==2 & Info.hand==1)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_L', 'T', 'c',con',SPM.xX.xKXs);
+        % (24) Right stim Right hand - UNCROSSED
+        con               = zeros(1,size(SPM.xX.X,2));
+        con(:,Info.stimside==2 & Info.hand==2)  = 1;
+        con               = con/sum(con);
+        SPM.xCon(end+1)   = spm_FcUtil('Set','stim_R_hand_R', 'T', 'c',con',SPM.xX.xKXs);
+
+        % - - - - - - - - - - - - - - - - 
+        % calculate the constrasts
+        SPM = spm_contrasts(SPM,[1:length(SPM.xCon)]);
+        save(fullfile(subjDir,'SPM.mat'),'SPM');
     case 'PSC_calc'                                                    % calculates % signal change for chords
         % calculate psc using contrast images from glm 3:
         %   con0001-0020 : each condition
@@ -1578,7 +1317,7 @@ switch what
         sn  = [];
         glm = [];
         vararginoptions(varargin,{'sn','glm'});
-        numImgs = [26,26,26,26,26,26,26,26,26,26,26]; % psc images per glm
+        numImgs = [24,nan,24,24];
         
         % housekeeping
         S = agen_imana('LIST_subj');
@@ -1593,7 +1332,7 @@ switch what
         P = {};                           % Filenames of input images
         numB = length(SPM.xX.iB);         % Partitions - runs
         for p = SPM.xX.iB
-            P{end+1} = sprintf('beta_%4.4d.nii',p);       % get the intercepts (for each run) and use them to calculate the baseline (mean images) * max height of design matrix regressor
+            P{end+1} = sprintf('beta_%4.4d.img',p);       % get the intercepts (for each run) and use them to calculate the baseline (mean images) * max height of design matrix regressor
         end
         for con = 1:numImgs(glm)   
             P{numB+1} = sprintf('con_%04d.nii',con);
@@ -1645,104 +1384,6 @@ switch what
             end
         end
     
-    case 'glmMoveBest_realignRegressors'
-        % move the best glms (changed onset times) to best glm directory.
-        
-        % These glms include movement regressors!
-        
-        % Remapp all images and files witihn glm directory per subject.
-        S=agen_imana('LIST_subj');
-        glmSubj = [7,nan,9,8,10,10,8,9,9,10,10,9,10]; % best glms per subject (varied spm_hrf onsets)
-        glmBest = 12; % which glm # are the glms mapped to?
-        subj_onset = [0.5,nan,1.5,1,2,2,1,1.5,1.5,2,2,1.5,2];
-        [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-        hrf_params(1:2) = [2 6]; % change delay of response (1) and undershoot (2)
-        % remap
-        for s = unique(S.SN)'
-            subjName = S.ID{S.SN==s};
-            fprintf('%s : ',subjName);
-            mkdir(fullfile(glmDir{glmBest},subjName));
-            glmOrig  = fullfile(glmDir{glmSubj(s)},subjName);
-            cd(glmOrig);
-            % move SPM and SPM_info
-            D=dir;
-            isMat = find(arrayfun(@(x) contains(x.name,'.mat'),D))';
-            for ii=isMat
-                source = fullfile(D(ii).folder,D(ii).name);
-                dest   = fullfile(glmDir{glmBest},subjName,D(ii).name);
-                copyfile(source,dest);
-            end
-            % renumber glm in SPM_info structure
-            SPM_info = load(fullfile(glmDir{glmBest},subjName,'SPM_info.mat'));
-            v=ones(size(SPM_info.glm));
-            SPM_info.glmOrig = SPM_info.glm;
-            SPM_info.glm = v.*glmBest;
-            SPM_info.onsetShift = v.*subj_onset(s);
-            SPM_info.hrfParams = v*hrf_params;
-            save(fullfile(glmDir{glmBest},subjName,'SPM_info.mat'),'-struct','SPM_info');
-            % change directory in SPM.mat:
-            load(fullfile(glmDir{glmBest},subjName,'SPM.mat'));
-            SPM.swd = fullfile(glmDir{glmBest},subjName);
-            save(fullfile(glmDir{glmBest},subjName,'SPM.mat'),'SPM');
-            % move niftis (and rename the fname field in the header as we do this):
-            isNii = find(arrayfun(@(x) contains(x.name,'.nii'),D))';
-            for ii=isNii
-                source = fullfile(D(ii).folder,D(ii).name);
-                dest   = fullfile(glmDir{glmBest},subjName,D(ii).name);
-                copyfile(source,dest);
-            end
-            fprintf('done\n');
-        end
-    case 'glmMoveBest'
-        % move the best glms (changed onset times) to best glm directory.
-        
-        % These glms DO NOT include movement regressors
-        
-        % Remapp all images and files witihn glm directory per subject.
-        S=agen_imana('LIST_subj');
-        glmSubj = [2,nan,4,4,4,1,4,5,3,5,5,4,5]; % best glms per subject (varied spm_hrf onsets)
-        glmBest = 11; % which glm # are the glms mapped to?
-        subj_onset = [0.5,nan,1.5,1.5,1.5,0,1.5,2,1,2,2,1.5,2];
-        [~,hrf_params] = spm_hrf(TR_length); % default hrf params
-        hrf_params(1:2) = [2 6]; % change delay of response (1) and undershoot (2)
-        % remap
-        for s = unique(S.SN)'
-            subjName = S.ID{S.SN==s};
-            fprintf('%s : ',subjName);
-            mkdir(fullfile(glmDir{glmBest},subjName));
-            glmOrig  = fullfile(glmDir{glmSubj(s)},subjName);
-            cd(glmOrig);
-            % move SPM and SPM_info
-            D=dir;
-            isMat = find(arrayfun(@(x) contains(x.name,'.mat'),D))';
-            for ii=isMat
-                source = fullfile(D(ii).folder,D(ii).name);
-                dest   = fullfile(glmDir{glmBest},subjName,D(ii).name);
-                copyfile(source,dest);
-            end
-            % renumber glm in SPM_info structure
-            SPM_info = load(fullfile(glmDir{glmBest},subjName,'SPM_info.mat'));
-            v=ones(size(SPM_info.glm));
-            SPM_info.glmOrig = SPM_info.glm;
-            SPM_info.glm = v.*glmBest;
-            SPM_info.onsetShift = v.*subj_onset(s);
-            SPM_info.hrfParams = v*hrf_params;
-            save(fullfile(glmDir{glmBest},subjName,'SPM_info.mat'),'-struct','SPM_info');
-            % change directory in SPM.mat:
-            load(fullfile(glmDir{glmBest},subjName,'SPM.mat'));
-            SPM.swd = fullfile(glmDir{glmBest},subjName);
-            save(fullfile(glmDir{glmBest},subjName,'SPM.mat'),'SPM');
-            % move niftis (and rename the fname field in the header as we do this):
-            isNii = find(arrayfun(@(x) contains(x.name,'.nii'),D))';
-            for ii=isNii
-                source = fullfile(D(ii).folder,D(ii).name);
-                dest   = fullfile(glmDir{glmBest},subjName,D(ii).name);
-                copyfile(source,dest);
-            end
-            fprintf('done\n');
-        end
-    
-        
     case '0' % ------------ SURF: surface reconstruction (FS, WB) ---------
     case 'SURF_freesurfer'   % run reconall   
         vararginoptions(varargin,{'sn'});
@@ -1766,106 +1407,7 @@ switch what
         fprintf('reslicing %s...',subj_name);
         surf_resliceFS2WB(subj_name, freesurferDir, wbDir,'resolution',res); 
         fprintf('done\n');
-    case 'SURF_make_caret'                                                  % STEP 2.4   :  Translate into caret format
-        vararginoptions(varargin,{'sn'});
-        subj_name = sprintf('s%02d',sn);
-        caret_importfreesurfer(['x' subj_name],freesurferDir,caretDir);
-    
-    case 'SURF_check_alignment'        % check the alignment for the identified sensorimotor cortex for controls/patients
-        regNum      = [1];            % S1,M1
-        
-        % 0. Load sulcal geometries from the chording data to be
-        % used as a reference for both controls and patients
-        s = spm_vol(fullfile(atlasDir,'/fs_LR.164k.LR.sulc.dscalar.nii'));
-        s = s.private.dat(:);
-        ref(:,1) = s(1:163842);
-        ref(:,2) = s(163843:end);
-        for h=1:2
-            % get regions of interest
-            s           = gifti(fullfile(atlasDir,['ROI.164K.',hem{h},'.label.gii']));
-            roi(:,h)    = ismember(s.cdata,regNum);
-        end
-        
-        % 1. Get list of subjects
-        D = agen_imana('LIST_subj');
-        S = [];
-        for i=1:length(D.SN)
-            sn = D.ID{i};
-            disp(sn);
-            
-            for h=1:2
-                % load sulcal file for subject
-                s           = gifti(fullfile(wbDir,sn,[sn '.' hem{h} '.sulc.164k.shape.gii']));
-                subjSulc    = -double(s.cdata); % signs seem flipped?
-                mse         = mean((ref(roi(:,h))-subjSulc(roi(:,h))).^2);  % difference between ref sulc and subj sulc in roi
 
-                % making/saving alldat structure
-                Dh              = getrow(D,strcmp(D.ID,sn));
-                Dh.hem          = h;
-                Dh.mse          = mse;                
-                S               = addstruct(S,Dh);
-            end
-        end
-        % Plot error in registration across hemispheres for patients
-        meanC   = mean(S.mse(S.control==1));
-        stdC    = std(S.mse(S.control==1));
-        
-        % plot controls as dashed lines
-        lineplot(S.SN,S.mse,'subset',S.control==1,'split',S.hem,'style_thickline',...
-                 'leg',hemName,'leglocation','northwest','linestyle',':','markersize',6);
-        hold on;
-        % plot patients as solid lines
-        lineplot(S.SN,S.mse,'subset',S.control==0,'split',S.hem,'style_thickline',...
-                 'leg',hemName,'leglocation','northwest','markersize',6);     
-        drawline(meanC+2*stdC,'dir','horz','color','k');
-        drawline(meanC-2*stdC,'dir','horz','color','k');
-       % set(gca,'FontSize',14);
-        set(gca,'xtick',unique(S.SN));
-        xlabel('subject #');
-        ylabel('mse');
-        title('deviation of regions between subject and reference surf');
-        hold off
-        
-        varargout = {S};
-%         % List bad participants/save all participants in file
-%         S.bad = S.mse>=(meanC+2*stdC);
-%         Sp = getrow(S,S.bad==1);
-%         fprintf('\nBad participants\n');
-%         fprintf('----------------\n');
-%         for i=1:length(Sp.SN)
-%             fprintf('SN: %s, Hem: %d\n',Sp.ID{i},Sp.hem(i));
-%         end
-%         dsave(fullfile(baseDir,'subj_list_check_alignment.txt'),S);
-    case 'SURF_check_subj_alignment'    % STEP 3.7      check the alignment for M1/S1 ROI for every subject in either hemisphere
-        % 0. Load subject data
-        D       = dload(fullfile(baseDir,'subj_list_check_alignment.txt'));
-        meanC   = mean(D.mse(D.control==1));
-        stdC    = std(D.mse(D.control==1));
-        
-        S = [];
-        for i=1:length(D.ID)
-            Si = getrow(D,i);
-            
-            % 1. get spec file to load for subject
-            specFile = fullfile(caretDir,['x' Si.ID{1}],...
-                                hemName{Si.hem},['x' Si.ID{1} '.' hem{Si.hem} '.spec']);
-                              
-            % 2. print subject information
-            fprintf('%d/%d. %s\n',i,length(D.ID),Si.ID{1});
-            fprintf('%s, Hem: %d\n',hemName{Si.hem});
-            fprintf('MSE: %2.2f, Normal Range: %2.2f-%2.2f\n',Si.mse,meanC-2*stdC,meanC+2*stdC);
-                              
-            % 3. Add roi paint and color files to spec file and launch caret with subject spec file
-            system(['caret_command -spec-file-add ',specFile,...
-                    ' area_color_file ',fullfile(caretDir,'fsaverage_sym',hemName{Si.hem},'ROI.areacolor')]);
-            system(['caret_command -spec-file-add ',specFile,...
-                    ' paint_file ',fullfile(caretDir,'fsaverage_sym',hemName{Si.hem},'ROI.paint')]);                
-            system(['caret5 -loadspec ' specFile]);
-            
-            S = addstruct(S,Si);
-        end;
-        
-        
     case '0' % ------------ SEARCH: surface searchlights. -----------------
     case 'WRAPPER_searchlight'                                               
         glm = 1;
@@ -1992,7 +1534,7 @@ switch what
         %   pcc_23 : right stim left hand  : orig
         %   psc_24 : right stim right hand : orig 
         res = '164k';
-        glm = 12;
+        glm = 3;
         group = 'patient';%'control';
         % get appropriate subjects according to group assignment
         S = agen_imana('LIST_subj');
@@ -2036,11 +1578,9 @@ switch what
                 gLs   = gifti(G_crossed_Ls);
                 gRs   = gifti(G_crossed_Rs);
                 dataC = mean([gLs.cdata,gRs.cdata],2);
-                % calc [crossed - uncrossed] map
-                dataDiff = [dataC - dataU];
                 % make two column output gifti (col 1=uncrossed, col 2=crossed)
-                data = [dataU, dataC, dataDiff];
-                G = surf_makeFuncGifti(data,'anatomicalStruct',hname{ii},'columnNames',{'uncrossed_RsRh_LsLh','crossed_RsLh_LsRh','cross-uncross diff'});
+                data = [dataU,dataC];
+                G = surf_makeFuncGifti(data,'anatomicalStruct',hname{ii},'columnNames',{'uncrossed_RsRh_LsLh','crossed_RsLh_LsRh'});
                 outFile = fullfile(surfDir, sprintf('%s.%s.glm%d.pscFlipped.%s.func.gii', subjName, hem{ii}, glm, res));
                 save(G,outFile);
                 groupFiles{ii,jj} = outFile;
@@ -2086,8 +1626,8 @@ switch what
         agen_imana('WB:vol2surf_indiv','sn',sn,'glm',glm,'map','psc','res',res);
     case 'WB:vol2surf_indiv'                                               
         % map indiv vol contrasts (.nii) onto surface (.gifti)
-        sn    = [];       
-        glm   = [];              
+        sn    = 1;       
+        glm   = 1;              
         hname = {'CortexLeft', 'CortexRight'}; % 'CortexLeft', 'CortexRight', 'Cerebellum'
         h     = [1 2];
         map   = 'averageAll'; %'t'; 'con'; 'search';
@@ -2146,11 +1686,11 @@ switch what
                 end
                 
                 if flip==0 % original space
-                    G = surf_vol2surf(double(C1.vertices), double(C2.vertices), fnames, 'column_names',con_name, 'anatomicalStruct',hname{ii});
+                    G = surf_vol2surf(C1.vertices, C2.vertices, fnames, 'column_names',con_name, 'anatomicalStruct',hname{ii});
                     outfile = fullfile(surfDir, sprintf('%s.%s.glm%d.%s.%s.func.gii', subjName, hem{ii}, glm, map, res));
                 elseif flip==1 % flip left-to-right, vice versa
                     fprintf('flipping %s to %s..',hem{ii},hem{h(h~=ii)});
-                    G = surf_vol2surf(double(C1.vertices), double(C2.vertices), fnames, 'column_names',con_name, 'anatomicalStruct',hname{h(h~=ii)});
+                    G = surf_vol2surf(C1.vertices, C2.vertices, fnames, 'column_names',con_name, 'anatomicalStruct',hname{h(h~=ii)});
                     outfile = fullfile(surfDir, sprintf('%s.%s.glm%d.%s.%s.func.gii', subjName, hem{h(h~=ii)}, glm, map, res));
                 end
                 save(G, outfile);
@@ -2281,7 +1821,7 @@ switch what
         vararginoptions(varargin,{'sn','glm'});
         
         S=agen_imana('LIST_subj');
-        %S=getrow(S,S.(sprintf('glm%d',glm))==1 & S.control==0);
+        S=getrow(S,S.(sprintf('glm%d',glm))==1 & S.control==0);
         for s=S.SN'
             % housekeeping
             subjName = S.ID{S.SN==s};
@@ -2373,15 +1913,14 @@ switch what
     case 'ROI_getTimeseries'                                                % (optional) :  Harvest ROI timeseries for specified region.
         % Use this and 'ROI_plot_timeseries' to ensure good GLM fits with
         % measured BOLD in rois.
-        glm = [];
-        roi = [1,2,9,10];
+        glm = 1;
         vararginoptions(varargin,{'sn','glm','roi'});
         
         S=agen_imana('LIST_subj');
-        %S=getrow(S,S.(sprintf('glm%d',glm))==1);
+        S=getrow(S,S.(sprintf('glm%d',glm))==1 & S.control==1);
         
         pre  = 4;                                                                  % how many TRs before trial onset (2.8 secs)
-        post = 6;                                                                 % how many TRs after trial onset (11.2 secs)
+        post = 20;                                                                % how many TRs after trial onset (11.2 secs)
         % (2) Load SPM and region.mat files, extract timeseries, save file
         T = [];
         for s=S.SN'
@@ -2392,7 +1931,7 @@ switch what
             load SPM;                                             % SPM
             load(fullfile(regDir,['regions_' subjName '.mat']));  % R                                                     % load R2 with region coordinates from
             % get region timeseries
-            [y_raw, y_adj, y_hat, y_res,B] = region_getts(SPM,{R{roi}});          
+            [y_raw, y_adj, y_hat, y_res,B] = region_getts(SPM,R);          
             % get trial onsets (in TRs)
             D = spmj_get_ons_struct(SPM);    
             v = ones(size(D.event,1),1);
@@ -2414,10 +1953,10 @@ switch what
         save(fullfile(regDir,sprintf('glm%d_reg_timeseries.mat',glm)),'-struct','T');
     case 'ROI_plotTimeseries'                                               % (optional) :  Plots timeseries for specified region (avg. across digits, separated by pressing speed)
         glm       = 1;
-        sn        = [1,3:13];
-        roi       = [1,2,9,10];
+        sn        = 1;
+        roi       = 2;
         pre       = 4;
-        post      = 6;
+        post      = 20;
         conds     = [1:20]; 
         vararginoptions(varargin,{'sn','glm','roi','conds'});
 
@@ -2427,22 +1966,13 @@ switch what
         sty2.general.linestyle = ':';
         j=1;
         for s=sn            
-            T = getrow(D,D.sn==s & ismember(D.roi,roi) & ismember(D.event,conds));
-            % calculate r2:
-            y = T.y_adj-mean(T.y_adj,1);
-            y_hat = T.y_hat-mean(T.y_hat,1);
-            tss = sum(sum(y.^2));
-            rss= sum(sum((y-y_hat).^2));
-            r2 = 1-(rss/tss)
-            % avg. timeseries across trials per block and regions:
-            T = tapply(T,{'glm','sn','block'},{'y_adj','nanmean(x,1)'},{'y_hat','nanmean(x,1)'});
-            % plot
-            %subplot(length(sn),1,j);
-            % plot adjusted betas
-            traceplot([-pre:post],T.y_adj,'errorfcn','','linecolor',[0.3 0.3 0.3],'patchcolor',[0.3 0.3 0.3]);
+            T = getrow(D,D.sn==s & D.roi==roi & ismember(D.event,conds));
+            subplot(length(sn),1,j);
+            % plot raw, adjusted betas
+            traceplot([-4:20],T.y_adj,'errorfcn','stderr','linecolor',[0.3 0.3 0.3],'patchcolor',[0.3 0.3 0.3]);
             % plot predicted fits
             hold on;
-            traceplot([-pre:post],T.y_hat,'linecolor','r','linewidth',2);
+            traceplot([-4:20],T.y_hat,'linecolor','r','linewidth',2);
             hold off;
             xlabel('TR');
             ylabel('activation');
@@ -2475,20 +2005,30 @@ switch what
         numIter    = 10;
 
         sn  = 1;
-        glm = 1;
-        roi = [1,2,9,10]; % optimize for V1 & M1
+        glm = 4;
+        roi = [2,10]; % [2,6,10,14]; % optimize for V1 & M1
         vararginoptions(varargin,{'sn','glm'});
         S = agen_imana('LIST_subj');
         
         fit = []'; % hrf parameter(s) to be fitted
         
+        if glm==2
+            [~,P0] = spm_hrf(TR_length);
+        elseif glm==3
+            subj_hrfParams = agen_imana('GLM3_hrfParams');
+            P0 = subj_hrfParams{sn};
+        elseif glm==4
+            subj_hrfParams = agen_imana('GLM4_hrfParams');
+            P0 = subj_hrfParams{sn};
+        end
+        P0         = P0(1:6)';
         LB         = [2 5 0 0 0 -2]';    
         UB         = [7 16 10 10 10 5]'; 
-        duration   = 2;%realmin; 
-        onsetshift = 1.5;
+        duration   = 1; % duration of 1== unscaled duration (this value scales the duration of the boxcar model by proportion)
+        onsetshift = 0;
         
-        pre  = 4;
-        post = 10;
+        pre  = 2;
+        post = 13;
         
         T = [];
 
@@ -2499,12 +2039,19 @@ switch what
         % load appropriate subject data
         cd(fullfile(glmDir{glm},subjName));
         load(fullfile(glmDir{glm},subjName,'SPM.mat'));
+%         if glm==2
+%             P0 = SPM.xBF.params';
+%             if isempty(P0)
+%                 [~,P0] = spm_hrf(TR_length);
+%                 P0     = P0(1:6)';
+%             end
+%         end
         load(fullfile(regDir,sprintf('regions_%s',subjName)));
         % default onset and duration
         for r = 1:length(SPM.nscan)
             for u=1:length(SPM.Sess(r).U)
                 SPM.Sess(r).U(u).dur = ones(size(SPM.Sess(r).U(u).dur)).*duration;
-                SPM.Sess(r).U(u).ons = SPM.Sess(r).U(u).ons + onsetshift; 
+                SPM.Sess(r).U(u).ons = SPM.Sess(r).U(u).ons;% + onsetshift; 
             end
             SPM.Sess(r).U=spm_get_ons(SPM,r);
         end
@@ -2517,11 +2064,11 @@ switch what
         Epre = sum(sum(Yres.^2))/numel(Yres(:));
 
         % Fit a common hrf
-        P0 = SPM.xBF.params(1:6);
+        eRatio = 1;
+        P0_    = P0;
+        iter   = 1;
         eRatio = 1;
         if ~isempty(fit)
-            P0_    = P0;
-            iter   = 1;
             fprintf('Iteration...');
             while ((eRatio >= eCriteria)&&(iter<numIter))
                 fprintf('%d.',iter);
@@ -2541,8 +2088,6 @@ switch what
                  P0(7)=SPM.Sess(1).U(1).dur(1); 
             end
             P = P0;
-            P(1)=2;
-            P(2)=6;
             SPM.xBF.bf = spmj_hrf(SPM.xBF.dt,P(1:7));
             SPM=spmj_fMRI_design_changeBF(SPM);
             % return predicted timeseries and residuals 
@@ -2584,57 +2129,21 @@ switch what
         drawline((trialDur*2)/TR_length,'dir','vert');
         drawline((trialDur*3)/TR_length,'dir','vert');
         hold off;
-      %  keyboard
-    case 'ROI_calcGLMfit'
-        S = agen_imana('LIST_subj');
-        glm = [1:10]; % onsets 0, 0.5, 1, 1.5, 2
-        roi = [1,2,9,10]; % bilateral S1 M1
-        D = [];
-        for s=S.SN'
-            subjName = S.ID{S.SN==s};
-            load(fullfile(regDir,sprintf('regions_%s',subjName))); % load region file
-            for g=glm
-                % load appropriate subject data
-                cd(fullfile(glmDir{g},subjName));
-                load(fullfile(glmDir{g},subjName,'SPM.mat'));
-                % get timeseries data (avg. across voxels and regions):
-                Y = region_getdata(SPM.xY.VY,{R{roi}});
-               % Y = cell2mat(Y);
-                Y = cell2mat(cellfun(@(x) mean(x,2),Y,'uni',0)); % rmv mean pattern from each roi
-                % redo first lvl glm:
-                KWY  = spm_filter(SPM.xX.K,SPM.xX.W*Y); % temporally filter Y
-                beta = SPM.xX.pKX * KWY;                % parameter estimates
-                Yhat = SPM.xX.xKXs.X(:,SPM.xX.iC)*beta(SPM.xX.iC,:); % predicted values (dropping the baseline- intercepts)
-                Yres = spm_sp('r',SPM.xX.xKXs,KWY);   % residuals of fit
-                % calculate r2 of glm model fit
-                Yhat = mean(Yhat,2); % avg. across rois/hemis
-                Yres = mean(Yres,2);
-                Yadj = Yhat + Yres;
-                d.r2  = 1 - (sum(Yres.^2) / sum(Yadj.^2));
-                d.r   = corr(Yhat,Yadj);
-                d.sn  = s;
-                d.glm = g;
-                d.roi = roi;
-                D = addstruct(D,d);
-            end % glm
-        end % subj
-        varargout = {D};
-        
+
     case 'ROI_getBetas'                                                     % Harvest activity patterns from specified rois
-        glm = 11;
-        roi = [1:16]; % bilateral S1 M1
+        glm = [];
+        roi = [];
         append = 0; % add betas to currently existing datastructure?
         vararginoptions(varargin,{'sn','glm','roi','append'});
-        getPSC= true;
+        
         S=agen_imana('LIST_subj');
         %S=getrow(S,S.(sprintf('glm%d',glm))==1);
         
-        numImgs = [26,26,26,26,26,26,26,26,26,26,26,26]; % psc images per glm
+        numImgs = [20,nan,24,24]; % psc images per glm
         
         T = [];
         if append
             T = load(fullfile(regDir,sprintf('glm%d_reg_betas.mat',glm))); % loads region data (T)
-            fprintf('appending betas...')
         end
         
         % harvest
@@ -2648,60 +2157,56 @@ switch what
             % volume files
             V = SPM.xY.VY; 
             % percent signal change files
-            if getPSC
-                Q = {}; 
-                for ii = 1:numImgs(glm)
-                    Q{ii} = (fullfile(glmDir{glm}, subjName, sprintf('psc_%02d.nii',ii))); 
-                end
-                Q = spm_vol(char(Q));
-                P = region_getdata(Q,{R{roi}});
+            Q = {}; 
+            for ii = 1:numImgs(glm)
+                Q{ii} = (fullfile(glmDir{glm}, subjName, sprintf('psc_%02d.nii',ii))); 
             end
-            % make condition #s for regressors: (we get ALL regressors b/c
-            % some participants missing conditions in some runs)
-            runs = unique(Info.run)';
-            numRuns = numel(runs);
-            Info.tt(isnan(Info.tt))=0;
-            ofInterest = logical(Info.tt); % indicies for regressors of interest
+            Q = spm_vol(char(Q));
+            % indicies for regressors of interest
+            ofInterest = 1:numel(Info.tt); % indicies for regressors of interest
             % get betas for each region
             Y = region_getdata(V,{R{roi}});  % Data Y is N x P (P is in order of transpose of R{r}.depth)
-            
+            P = region_getdata(Q,{R{roi}});
             for ii = 1:numel(roi) 
                 % estimate region betas
-                [betaW,resMS,Sw,betaHat,shrinkage,trRR] = rsa.spm.noiseNormalizeBeta(Y{ii},SPM,'normmode','overall');
+                [betaW,resMS,Sw,betaHat,shrinkage,trRR] = rsa.spm.noiseNormalizeBeta(Y{ii},SPM,'normmode','runwise');
                 betaUW  = bsxfun(@rdivide,betaHat,sqrt(resMS));
                 % index fields in output structure
                 rIdx = regions(regions==roi(ii));
                 t.sn        = s;
                 t.control   = control(s);
-                t.numRuns   = numRuns;
+                t.numRuns   = runs(s);
                 t.roiNum    = regions(rIdx);
                 t.roi       = regType(rIdx);
                 t.hemi      = regSide(rIdx);
                 t.cortical  = cortical(rIdx);
-                % beta substructure indexing fields (harvest only betas of
-                % interest, not nuissance regressors- i.e. nan tt)
-                t.beta.run        = Info.run(ofInterest);
-                t.beta.stimside   = Info.stimside(ofInterest);
-                t.beta.cue        = Info.cue(ofInterest);
-                t.beta.hand       = Info.hand(ofInterest);
-                t.beta.digit      = Info.digit(ofInterest);
-                t.beta.tt         = Info.tt(ofInterest);
-                t.beta.crossed    = t.beta.stimside~=t.beta.hand;
+                % beta substructure indexing fields
+                t.beta.run        = Info.run;
+                t.beta.stimside   = Info.stimside;
+                t.beta.cue        = Info.cue;
+                t.beta.hand       = Info.hand;
+                t.beta.digit      = Info.digit;
+                t.beta.tt         = Info.tt;
+                t.beta.crossed    = Info.stimside~=Info.hand;
                 % add BETAS to output substructure
                 t.beta.betaW      = betaW(ofInterest,:);  
                 t.beta.betaUW     = betaUW(ofInterest,:);
                 t.beta.betaHat    = betaHat(ofInterest,:);
                 % add PSC to output substructure
-                if exist('P','var')
-                    n  = nan(1,numImgs(glm)-20);
-                    t.psc.psc      = P{ii};
-                    t.psc.tt       = [1:20,nan(1,numImgs(glm)-20)]';
-                    t.psc.stimside = [stimSide;n'];
-                    t.psc.cue      = [cue;n'];
-                    t.psc.hand     = [hand;n'];
-                    t.psc.digit    = [digit;n'];
-                    t.psc.crossed  = [stimSide~=hand;n'];
-                end
+                n  = nan(1,numImgs(glm)-20);
+%                 na = nan(numImgs(glm),1);
+                t.psc.psc          = P{ii};
+                t.psc.tt           = [1:20,nan(1,numImgs(glm)-20)]';
+                t.psc.stimside     = [stimSide;n'];
+                t.psc.cue          = [cue;n'];
+                t.psc.hand         = [hand;n'];
+                t.psc.digit        = [digit;n'];
+                t.psc.crossed      = [stimSide~=hand;n'];
+%                 t.psc.avg_stimSide = na; t.psc.avg_stimSide(21)=1; t.psc.avg_stimSide(22)=2;
+%                 t.psc.avg_hand = na; t.psc.avg_hand(23)=1; t.psc.avg_hand(24)=2;
+%                 t.psc.avg_crossed = na; t.psc.avg_crossed(25)=1;
+%                 t.psc.avg_uncrossed = na; t.psc.avg_uncrossed(26)=1;
+%                 t.psc.avg_digit = na; t.psc.avg_digit(end-9:end)=[1:5,1:5]';
                 % add VOXEL info to output substructure
                 t.voxel.resMS     = resMS';
                 t.voxel.xyzcoord  = R{roi(ii)}.data; % excl already applied
@@ -2724,90 +2229,104 @@ switch what
         % output structures
         T = [];
         % get data
-        D     = load(fullfile(regDir,sprintf('glm%d_reg_betas.mat',glm))); % loads region data (T)
-        roiID = unique(D.roiNum)';
+        D   = load(fullfile(regDir,sprintf('glm%d_reg_betas.mat',glm))); % loads region data (T)
+        roi = unique(D.roiNum)';
         % do stats
         for s = S.SN' % for each subject
             subjName = S.ID{S.SN==s};
             fprintf('%s : ',subjName);
-            load(fullfile(glmDir{glm},subjName,'SPM.mat'));             % SPM file (SPM)
             % get data for subject
-            for r = roiID % for each region
+            for r = roi % for each region
                 % get subject's region data
                 Ds = getrow(D,(D.sn==s & D.roiNum==r)); 
                 B = Ds.beta;
                 P = Ds.psc;
                 % add indexing field to output structure
                 t.sn       = Ds.sn;
+                t.roi      = Ds.roi;
                 t.glm      = glm;
                 t.roiNum   = r;
-                t.region   = regType(r);
+                t.roi      = regType(r);
                 t.hemi     = regSide(r);
                 t.control  = control(s);
                 t.cortical = cortical(r);
                 t.numRuns  = runs(s);
                 t.numVox   = size(B.betaHat,2);
-
                 % calculate cv second moment before run mean removal
-                Gw_wmean = pcm_estGCrossval(B.betaW,B.run,B.tt);
+                t.Gw_wmean = rsa_vectorizeIPM(pcm_estGCrossval(B.betaW,B.run,B.tt));
+                % remove run means from betas
+                C0 = indicatorMatrix('identity',B.run);
+                betaW  = B.betaW - C0*pinv(C0)* B.betaW;
+                betaUW = B.betaUW- C0*pinv(C0)*B.betaUW;
 
                 % Calc Distances (LDC and cosine):
                 % b/t all condition pairs:
-                Call = indicatorMatrix('allpairs',unique(B.tt)');
-                t.ldc_all = diag(Call*Gw_wmean*Call')';
-                Gpd = pcm_makePD(Gw_wmean);
-                t.cos_all = corrDist(Gpd);
-                t.ipm     = rsa_vectorizeIPM(Gw_wmean);
-                
-                % Calc split-half (even-odd split) reliabilities of RDMs:
-                part = unique(B.run)';
-                for ii=1:2
-                    partI{ii}=part(mod(part+ii,2)==0);
-                end
-                for ii=1:2
-                    bp = getrow(B,ismember(B.run,partI{ii}));
-                    g_split = pcm_estGCrossval(bp.betaW,bp.run,bp.tt);
-                    g_pd = pcm_makePD(g_split);
-                    ldc_split(ii,:) = diag(Call*g_split*Call')';
-                    cos_split(ii,:) = corrDist(g_pd);
-                end
-                t.ldc_splithalfR = corr(ldc_split(1,:)',ldc_split(2,:)');
-                t.cos_splithalfR = corr(cos_split(1,:)',cos_split(2,:)');
+                Call        = indicatorMatrix('allpairs',unique(B.tt)');
+                Gw  = pcm_estGCrossval(betaW, B.run,B.tt); % multivariate whitened
+                Guw = pcm_estGCrossval(betaUW,B.run,B.tt); % univariate whitened
+                t.ldc_all = diag(Call*Gw*Call')';
+                t.cos_all = corrDist(Gw);
+                t.Gw       = rsa_vectorizeIPM(Gw);
+                t.Guw      = rsa_vectorizeIPM(Guw);
+                % b/t stim side left and stim side right:
+                Css       = indicatorMatrix('allpairs',unique(B.stimside)');
+                Gw_ss     = pcm_estGCrossval(betaW, B.run,B.stimside);
+                t.ldc_ss = diag(Css*Gw_ss*Css')';
+                t.cos_ss = corrDist(Gw_ss);
+                % b/t left and right hand:
+                Ch        = indicatorMatrix('allpairs',unique(B.stimside)');
+                Gw_h      = pcm_estGCrossval(betaW,B.run,B.hand);
+                t.ldc_hand = diag(Ch*Gw_h*Ch')';
+                t.cos_hand = corrDist(Gw_h);
+                % b/t different digits:
+                Cd        = indicatorMatrix('allpairs',unique(B.digit)');
+                Gw_d      = pcm_estGCrossval(betaW,B.run,B.digit);
+                t.ldc_digit = diag(Cd*Gw_d*Cd')';
+                t.cos_digit = corrDist(Gw_d);
+                % b/t different visual cues:
+                Ccue      = indicatorMatrix('allpairs',unique(B.cue)');
+                Gw_cue    = pcm_estGCrossval(betaW,B.run,B.cue);
+                t.ldc_cue = diag(Ccue*Gw_cue*Ccue')';
+                t.cos_cue = corrDist(Gw_cue);
+                % b/t crossed and uncross conditions:
+                B.crossType = B.crossed+1;
+                Cc        = indicatorMatrix('allpairs',unique(B.crossType)');
+                Gw_c      = pcm_estGCrossval(betaW,B.run,B.crossType);
+                t.ldc_crossed = diag(Cc*Gw_c*Cc')';
+                t.cos_crossed = corrDist(Gw_c);                
                 
                 % save avg. PSC for each condition
+                %B = tapply(B,{'tt','hand','stimside','digit'},{'betaHat','mean'});
                 idx = P.tt>0;
                 t.psc_tt   = mean(P.psc(idx,:),2)'; % avg. across voxels
-                switch t.hemi
-                    case 1 % left hemi
-                        contraSide = 2;
-                        ipsiSide   = t.hemi;
-                    case 2 % right hemi
-                        contraSide = 1;
-                        ipsiSide   = t.hemi;
+%                 t.tt_p       = P.tt(idx)';
+%                 t.stimside_p = P.stimside(idx)';
+%                 t.cue_p      = P.cue(idx)';
+%                 t.hand_p     = P.hand(idx)';
+%                 t.digit_p    = P.digit(idx)';
+                
+                % now correctly harvest (un)crossed psc
+                % LsLh : uncrossed for right hemi rois
+                % LsRh : crossed """
+                % RsLh : crossed for left hemi rois
+                % RsRh : uncorrsed """
+                if t.hemi==1 % left hemi
+                    t.psc_uncrossed = mean(mean(P.psc(P.stimside==2 & P.hand==2,:),2)); % RsRh : contralateral stim & response
+                    t.psc_crossed   = mean(mean(P.psc(P.stimside==2 & P.hand==1,:),2)); % RsLh : contralateral stim & ipsilateral response
+                    t.psc_opposite  = mean(mean(P.psc(P.stimside==1 & P.hand==1,:),2)); % both stimulus and response are in other hemi
+                elseif t.hemi==2 % right hemi
+                    t.psc_uncrossed = mean(mean(P.psc(P.stimside==1 & P.hand==1,:),2)); % LsLh
+                    t.psc_crossed   = mean(mean(P.psc(P.stimside==1 & P.hand==2,:),2)); % LsRh
+                    t.psc_opposite  = mean(mean(P.psc(P.stimside==2 & P.hand==2,:),2));
                 end
                 
-                % cut PSC and RDMs into specific comparisons
-                cScR = P.stimside==contraSide & P.hand==contraSide;
-                iScR = P.stimside==ipsiSide & P.hand==contraSide;
-                cSiR = P.stimside==contraSide & P.hand==ipsiSide;
-                iSiR = P.stimside==ipsiSide & P.hand==ipsiSide;
-                t.psc_CsCr = mean(mean(P.psc(cScR,:),2)); % contralateral stim & response
-                t.psc_IsCr = mean(mean(P.psc(iScR,:),2)); % ipsilateral stim & contra response
-                t.psc_CsIr = mean(mean(P.psc(cSiR,:),2)); % contralateral stim & ipsilateral response
-                t.psc_IsIr = mean(mean(P.psc(iSiR,:),2)); % ipsilateral stim & ipsilateral response
-                
-                % same contrasts as PSC but for distances:
-                RDM_ldc = rsa_squareRDM(t.ldc_all);
-                t.ldc_CsCr = rsa_vectorizeRDM(RDM_ldc(cScR,cScR));
-                t.ldc_IsCr = rsa_vectorizeRDM(RDM_ldc(iScR,iScR));
-                t.ldc_CsIr = rsa_vectorizeRDM(RDM_ldc(cSiR,cSiR));
-                t.ldc_IsIr = rsa_vectorizeRDM(RDM_ldc(iSiR,iSiR));
-                
-                RDM_cos = rsa_squareRDM(t.cos_all);
-                t.cos_CsCr = rsa_vectorizeRDM(RDM_cos(cScR,cScR));
-                t.cos_IsCr = rsa_vectorizeRDM(RDM_cos(iScR,iScR));
-                t.cos_CsIr = rsa_vectorizeRDM(RDM_cos(cSiR,cSiR));
-                t.cos_IsIr = rsa_vectorizeRDM(RDM_cos(iSiR,iSiR));
+                % avg. betas per condition:
+                B.betaW  = betaW; % run-mean removed betas
+                B.betaUW = betaUW; % run-mean removed betas
+                B=tapply(B,{'tt'},{'betaW','mean(x,1)'},{'betaUW','mean(x,1)'},{'betaHat','mean(x,1)'});
+                t.meanBeta_raw = mean(B.betaHat,2)';
+                t.meanBeta_uni = mean(B.betaUW,2)';
+                t.meanBeta_mlt = mean(B.betaW,2)';
                 
                 T = addstruct(T,t);
                 fprintf('%d.',r)
@@ -2826,9 +2345,9 @@ switch what
 
         % calculates using betas that have not been noise normalized
         
-        glm = 1:10;
+        glm = [];
         SI = agen_imana('LIST_subj');
-        roi = [1,2,9,10];
+        roi = [];
         removeMean = 1;
         conds = 1:20;
         vararginoptions(varargin,{'sn','glm','roi','removeMean','conds'});
@@ -2840,33 +2359,28 @@ switch what
             T = load(fullfile(regDir,sprintf('glm%d_reg_betas.mat',g))); % loads in struct 'T'
             for r = roi % per roi
                 for s = SI.SN' % per subj
-                    % get subj data
-                    b = getrow(T,(T.sn==s & T.roiNum==r));
-                    b = b.beta;
-                    % find which conditions are modeled in each run (due to
-                    % errors, some subjs are missing some conditions in
-                    % some runs- not common):
-                    isGood = pivottable(b.run,b.tt,b.tt,'length');
-                    isGood = ~isnan(sum(isGood,1));
-                    theConds = conds(isGood);
-                    % restrict to specific conditions
-                    b = getrow(b,ismember(b.tt,theConds)); 
-                    % calculate the pattern consistency
-                    rs.r2              = rsa_patternConsistency(b.betaHat,b.run,b.tt,'removeMean',removeMean);
-                    [rs.r2_cv,rs.r_cv] = rsa_patternConsistency_crossval(b.betaHat,b.run,b.tt,'removeMean',removeMean);
-                    rs.sn              = s;
-                    rs.roi             = r;
-                    rs.glm             = g;
-                    rs.numConds        = numel(theConds);
-                    rs.group           = ~SI.control(SI.SN==s) + 1; % 1=control, 2=patient
-                    rs.removeMean      = removeMean;
-                    R = addstruct(R,rs);
+                    for hh=1:2 % per hemi
+                        % get subj data
+                        b = getrow(T,(T.sn==s & T.roi==r & T.hemi==hh));
+                        b = b.beta;
+                        b = getrow(b,ismember(b.tt,conds)); % restrict to specific conditions
+                        % calculate the pattern consistency
+                        rs.r2              = rsa_patternConsistency(b.betaHat,b.run,b.tt,'removeMean',removeMean);
+                        [rs.r2_cv,rs.r_cv] = rsa_patternConsistency_crossval(b.betaHat,b.run,b.tt,'removeMean',removeMean);
+                        rs.sn              = s;
+                        rs.roi             = r;
+                        rs.glm             = g;
+                        rs.hemi            = hh;
+                        rs.numConds        = numel(conds);
+                        rs.group           = ~SI.control(SI.SN==s) + 1; % 1=control, 2=patient
+                        rs.removeMean      = removeMean;
+                        R = addstruct(R,rs);
+                    end
                 end
             end
         end
-        pivottable(R.glm,R.sn,R.r2,'mean','numformat','%0.4f');
-        pivottable(R.glm,R.sn,R.r2_cv,'mean','numformat','%0.4f');
-        pivottable(R.glm,R.sn,R.r_cv,'mean','numformat','%0.4f');
+        %pivottable(R.glm,R.sn,R.r2,'mean','numformat','%0.4f');
+        %pivottable(R.glm,R.sn,R.r2_cv,'mean','numformat','%0.4f');
         varargout = {R};
         % output arranged such that each row is an roi, each col is subj
     case 'ROI_rdmStability'
@@ -2879,22 +2393,17 @@ switch what
         T = load(fullfile(regDir,sprintf('glm%d_reg_Toverall.mat',glm)));
         % housekeeping
         T = getrow(T,ismember(T.sn,sn));
-        T.group = ~T.control+1; % 1=control, 2=patient
-        T.ldc   = T.ldc_CsCr;
-        T.cos   = T.cos_CsCr;
-        T.psc   = T.psc_CsCr;
+        T.group = ~T.control+1;
         D = []; % output structure
         for rr = roi
             for gg=1:2 % per group
-                t = getrow(T,T.region==rr & T.group==gg);
-                t = tapply(t,{'sn','group','region','glm'},{'ldc','mean(x,1)'},{'cos','mean(x,1)'},{'psc','mean(x,1)'}); % avg. rdms across hemispheres
-%                 R = corr(t.ldc');
-                R = corr(t.cos');
+                t = getrow(T,T.roi==rr & T.group==gg);
+                t = tapply(t,{'sn','group','roi','glm'},{'ldc_digit','mean(x,1)'}); % avg. rdms across hemispheres
+                R = corr(t.ldc_digit');
                 R = 1-squareform(1-R)';
                 d = [];
                 d.numSN = numel(t.sn); 
-                d.ldc   = mean(t.ldc,1);
-                d.psc   = mean(t.psc);
+                d.ldc   = mean(t.ldc_digit,1);
                 d.roi   = rr;
                 d.group = gg;
                 d.corr  = mean(R);
@@ -2907,208 +2416,59 @@ switch what
             end
         end
         varargout = {D}; 
-    case 'ROI_patternReliability'                                           % plot w/in subj, w/in speed rdm reliability (Across two partitions), compare with across-speed correlations. Insights into RSA stability    
-        % Splits data for each session into two partitions (even and odd runs).
-        % Calculates correlation coefficients between each condition pair 
-        % between all partitions.
-        % Default setup includes subtraction of each run's mean
-        % activity pattern (across conditions).
-        glm = 12;
-        roi = [1:16]; % default roi
-        S = agen_imana('LIST_subj');
-        S.group = abs(S.control-2);
-        sn = S.SN';
-        mean_subtract = 1; % subtract run means
-        betaType = 'betaHat'; % betaHat (raw), betaUW (uni whitened), betaW (multi whitened)
-        % Correlate patterns across even-odd run splits within subjects.
-        % Does correlation across all depths.
-        vararginoptions(varargin,{'roi','glm','sn','betaType'});
-        R = []; % output struct
-        % Load subject's betas in all rois
-        T   = load(fullfile(regDir,sprintf('glm%d_reg_betas.mat',glm)));      
-        % loop across and correlate
-        for s = sn % for each subject
-            subjName = S.ID{S.SN==s};
-            D = load(fullfile(glmDir{glm}, subjName, 'SPM_info.mat')); % load subject's trial structure
-            D = getrow(D,D.regTask==1); % drop nuissance regressor info from structure
-            for r = roi % for each roi
-                Ts = getrow(T,T.sn==s & T.roiNum==r);
-                hemi = Ts.hemi;
-                roiID = Ts.roi;
-                Ts = Ts.beta;
-                Ts.betas = Ts.(betaType); % get specified patterns
-                % remove run means?
-                if mean_subtract
-                    C0  = indicatorMatrix('identity',Ts.run);
-                    Ts.betas = Ts.betas - C0*pinv(C0)* Ts.betas; % run mean subtraction  
-                end
-                % split patterns into even and odd runs, avg. within splits
-                idxEven  = logical(rem(Ts.run,2));
-                idxOdd   = ~idxEven;
-                Ts.split = zeros(size(Ts.run));
-                Ts.split(idxEven) = 1;
-                Ts.split(idxOdd) = 2;
-                Ts = tapply(Ts,{'split','tt','stimside','cue','hand','digit','crossed'},{'betas','mean'});
-                % correlation harvest matrices
-                sameCond  = bsxfun(@eq,Ts.tt,Ts.tt');
-                diffSplit = tril(bsxfun(@(x,y) x~=y,Ts.split,Ts.split'));
-                % do correlations between partition patterns
-                Rm = corr(Ts.betas');
-                % harvest into output structure
-                w.corr   = mean(Rm(sameCond & diffSplit)); % within-condition correlations
-                w.within = 1;
-                w.sn     = s;
-                w.roiNum = r;
-                w.roi    = roiID;
-                w.hemi   = hemi;
-                w.group  = S.group(S.SN==s);
-                a.corr   = mean(Rm(~sameCond & diffSplit)); % across condition correlations
-                a.sn     = s;
-                a.roiNum = r;
-                a.within = 0;
-                a.group  = S.group(S.SN==s);
-                a.roi    = roiID;
-                a.hemi   = hemi;
-                a.group  = S.group(S.SN==s);
-                r = [];
-                r = addstruct(w,a);
-                R = addstruct(R,r);
-            end
-        end;
-        varargout = {R};  
-    
         
     case '0' % ------------ PLOTTING --------------------------------------
-    case 'plot_roiMDS_G'                                                % (optional) :  Plots the scaled representational structure. 
+    case 'plot_roiMDS'                                                % (optional) :  Plots the scaled representational structure. 
         % enter region, glm #, sn (if desired)
-        glm = 11;
+        glm = 3;
         roi = 2;    
         split = 'none'; % 'none', 'stimside', 'digit', 'cue'
         S   = agen_imana('LIST_subj');
-        S=getrow(S,S.control==1);
+        S=getrow(S,S.(sprintf('glm%d',glm))==1 & S.control==1);
         sn  = S.SN';
         vararginoptions(varargin,{'roi','glm','sn'});    
         % get data
         T = load(fullfile(regDir,sprintf('glm%d_reg_Toverall.mat',glm)));
-        T = getrow(T,T.region==roi & ismember(T.sn,sn));
+        T = getrow(T,T.roi==roi & ismember(T.sn,sn));
         % avg. across hemispheres for roi
-        T = tapply(T,{'control','sn','region'},{'ipm','mean(x,1)'});
-        G = rsa_squareIPM(nanmean(T.ipm,1)); 
-        
-        % make digit contrast:
-        L = agen_imana('LIST_tt');
-        L.digit_cross = L.digit + L.crossed.*5;
-        C = pcm_indicatorMatrix('identity',L.hand);
-        Y = rsa_classicalMDS(G,'mode','IPM','contrast',C);
-        
-% %         % make G pos def & symmetric:
-% %         G = pcm_makePD(G);
-% %         % get eigenvalues
-% %         [V,L] = eig(G); % V=eigenvectors, L=eigenvalues
-% %         % sort by size
-% %         [l,i] = sort(diag(L),1,'descend');
-% %         V     = V(:,i);
-% %         % projcet patterns into subspace
-% %         Y = bsxfun(@times,V,sqrt(l'));
-% %         % clean up projections:
-% %         Y(:,l<eps)=0; % drop empty dimensions            
-% %         Y=real(Y); 
-% %         %V(:,indx)=0; % do same for eigenvectors (if we want to inspect them)
-% %         %V=real(V); 
+        T = tapply(T,{'control','sn','roi'},{'Gw_wmean','mean'});
+        G = rsa_squareIPM(nanmean(T.Gw_wmean,1)); 
+        % make G pos def & symmetric:
+        G = (G+G')/2;
+        % get eigenvalues
+        [V,L] = eig(G); % V=eigenvectors, L=eigenvalues
+        % sort by size
+        [l,i] = sort(diag(L),1,'descend');
+        V     = V(:,i);
+        % projcet patterns into subspace
+        Y = bsxfun(@times,V,sqrt(l'));
+        % clean up projections:
+        Y(:,l<eps)=0; % drop empty dimensions            
+        Y=real(Y); 
+        %V(:,indx)=0; % do same for eigenvectors (if we want to inspect them)
+        %V=real(V); 
         
         % PLOT projections:
         % style setup
+        L = agen_imana('LIST_tt');
         switch split
             case 'none'
                 split = L.trialType;
                 label = split;
         end
         CAT.markertype  = 'o';
-        CAT.markersize  = 8;
-        makerclrs = {[0.05 0 0],[0.54 0 0],[1 0.04 0],[1 0.54 0],[1 1 0.063]};
-        CAT.markerfill = repmat(makerclrs,1,4);
+        CAT.markersize  = 7;
         CAT.markercolor = 'k';
         scatterplot3(Y(1:end,1),Y(1:end,2),Y(1:end,3),'split',split,'label',label,'CAT',CAT);
         % link conditions for crossed and uncrossed, split by hand (e.g.
         % left stim-left hand, left stim-right hand, etc.)
-        clrs = {[0.7 0.7 0.7],[0.7 0.7 0.7],[0 0 0],[0 0 0]};
-        linestyle = {'-','-.','-.','-'};
+        clrs = {[1 0 0],[0 0 1],[1 0 0],[0 0 1]};
         ii=1;
         for ss=1:2 % stim side
             for h=1:2 % hand
                 idx= find(L.stimSide==ss & L.hand==h);
                 idx=[idx; idx(1)];
-                line(Y(idx,1),Y(idx,2),Y(idx,3),'color',clrs{ii},'linestyle',linestyle{ii},'linewidth',1.25);
-                ii=ii+1;
-            end
-        end
-        % rest crosshairs
-        hold on;
-        plot3(0,0,0,'+','MarkerFaceColor',[0.75, 0, 0.75],'MarkerEdgeColor',[0.75, 0, 0.75],'MarkerSize',8);
-        hold off;
-        axis equal;
-        xlabel('pc 1');
-        ylabel('pc 2');
-        zlabel('pc 3');
-    case 'plot_roiMDS_dist'                                                % (optional) :  Plots the scaled representational structure. 
-        % enter region, glm #, sn (if desired)
-        glm = 11;
-        roi = 1;    
-        split = 'none'; % 'none', 'stimside', 'digit', 'cue'
-        S   = agen_imana('LIST_subj');
-        S=getrow(S,S.control==1);
-        sn  = S.SN';
-        vararginoptions(varargin,{'roi','glm','sn'});    
-        % get data
-        T = load(fullfile(regDir,sprintf('glm%d_reg_Toverall.mat',glm)));
-        T = getrow(T,T.region==roi & ismember(T.sn,sn));
-        % avg. across hemispheres for roi
-        T = tapply(T,{'control','sn','region'},{'cos_all','mean(x,1)'},{'ldc_all','mean(x,1)'});
-        RDM = rsa_squareRDM(mean(T.ldc_all,1));
-        % make digit contrast:
-        L = agen_imana('LIST_tt');
-        L.digit_cross = L.digit + L.crossed.*5;
-        C = pcm_indicatorMatrix('identity',L.trialType);
-        Y = rsa_classicalMDS(RDM,'mode','RDM','contrast',C);
-        
-% %         % make G pos def & symmetric:
-% %         G = pcm_makePD(G);
-% %         % get eigenvalues
-% %         [V,L] = eig(G); % V=eigenvectors, L=eigenvalues
-% %         % sort by size
-% %         [l,i] = sort(diag(L),1,'descend');
-% %         V     = V(:,i);
-% %         % projcet patterns into subspace
-% %         Y = bsxfun(@times,V,sqrt(l'));
-% %         % clean up projections:
-% %         Y(:,l<eps)=0; % drop empty dimensions            
-% %         Y=real(Y); 
-% %         %V(:,indx)=0; % do same for eigenvectors (if we want to inspect them)
-% %         %V=real(V); 
-        
-        % PLOT projections:
-        % style setup
-        switch split
-            case 'none'
-                split = L.trialType;
-                label = split;
-        end
-        CAT.markertype  = 'o';
-        CAT.markersize  = 8;
-        makerclrs = {[0.05 0 0],[0.54 0 0],[1 0.04 0],[1 0.54 0],[1 1 0.063]};
-        CAT.markerfill = repmat(makerclrs,1,4);
-        CAT.markercolor = 'k';
-        scatterplot3(Y(1:end,1),Y(1:end,2),Y(1:end,3),'split',split,'label',label,'CAT',CAT);
-        % link conditions for crossed and uncrossed, split by hand (e.g.
-        % left stim-left hand, left stim-right hand, etc.)
-        clrs = {[0.7 0.7 0.7],[0.7 0.7 0.7],[0 0 0],[0 0 0]};
-        linestyle = {'-','-.','-.','-'};
-        ii=1;
-        for ss=1:2 % stim side
-            for h=1:2 % hand
-                idx= find(L.stimSide==ss & L.hand==h);
-                idx=[idx; idx(1)];
-                line(Y(idx,1),Y(idx,2),Y(idx,3),'color',clrs{ii},'linestyle',linestyle{ii},'linewidth',1.25);
+                line(Y(idx,1),Y(idx,2),Y(idx,3),'color',clrs{ii});
                 ii=ii+1;
             end
         end
@@ -3136,15 +2496,15 @@ switch what
         varargout = {T};
     case 'plot_dists'
         % plots distances per roi for stimulation side and hand:
-        glm = 11;
+        glm = 3;
         vararginoptions(varargin,{'sn'});
         % plots PSC styled into fancy figure
         T = load(fullfile(regDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
-        T = tapply(T,{'glm','control','sn','region'},...
-            {'ldc_contraStimContraResp','mean'},{'ldc_ipsiStimContraResp','mean'},...
-            {'ldc_contraStimIpsiResp','mean'},{'ldc_ipsiStimIpsiResp','mean'}); % avg. across hemispheres
+        T = tapply(T,{'glm','control','sn','roi'},...
+            {'ldc_ss','mean'},{'ldc_hand','mean'},...
+            {'cos_ss','mean'},{'cos_hand','mean'}); % avg. across hemispheres
         % assign plotting-friendly roi labels
-        T.roiPlotNum = roiPlotNum(T.region)';
+        T.roiPlotNum = roiPlotNum(T.roi)';
         % make plot-friendly structure
         D=[];
         v=[1;1];
@@ -3174,10 +2534,10 @@ switch what
         end 
         varargout={D};
     case 'plot_psc'
-        glm = 12;
+        glm = 3;
         
         % plots PSC styled into fancy figure
-        T = load(fullfile(regDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
+        T = load(fullfile(anaDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
         T.pscRatio = T.psc_uncrossed./T.psc_crossed;
         T = tapply(T,{'glm','control','sn','roi'},...
             {'psc_uncrossed','mean'},{'psc_crossed','mean'},{'psc_opposite','mean'},{'pscRatio','mean'}); % avg. across hemispheres
@@ -3397,7 +2757,7 @@ switch what
     case 'plotMotorPSC_uncrossed'
         % plot psc of uncrossed contra and ipsilaterl motor region
         % activities, split by groups
-        glm = 12;
+        glm = 3;
         
         % plots PSC styled into fancy figure
         T = load(fullfile(anaDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
@@ -3525,105 +2885,14 @@ switch what
         %keyboard
         varargout={D};
     case 'plot_actVsDist'     
-        glm = [];
-        region = 2;
-        vararginoptions(varargin,{'glm','region'});
+        glm = 3;
+        roi = 2;
         % plots PSC styled into fancy figure
-        T = load(fullfile(regDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
-        T = getrow(T,ismember(T.region,region)); 
-        T = tapply(T,{'glm','control','sn','region'},...
-            {'ldc_CsCr','mean'},{'cos_CsCr','mean'},{'psc_CsCr','mean'},...
-            {'ldc_IsCr','mean'},{'cos_IsCr','mean'},{'psc_IsCr','mean'},...
-            {'ldc_CsIr','mean'},{'cos_CsIr','mean'},{'psc_CsIr','mean'},...
-            {'ldc_IsIr','mean'},{'cos_IsIr','mean'},{'psc_IsIr','mean'}); % avg. across hemispheres
-        T.group = abs(T.control-2);
-
-        subplot(1,3,1);
-        imagesc(rsa_squareRDM(mean(T.ldc_CsCr(T.group==1,:),1)));
-        colorbar
-        title('controls');
+        To = load(fullfile(anaDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
+        To = getrow(To,ismember(To.roi,roi)); 
         
-        subplot(1,3,2);
-        imagesc(rsa_squareRDM(mean(T.ldc_CsCr(T.group==2,:),1)));
-        colorbar
-        title('AgCC');
         
-        subplot(1,3,3);
-        CAT.marker = 'o';
-        CAT.markersize=8;
-        CAT.markerfill = {[0 0 0.9],[0.9 0 0]};
-        CAT.markercolor = [0 0 0];
-        scatterplot(mean(T.ldc_CsCr,2),T.psc_CsCr,'split',T.group,'CAT',CAT);
-        xlabel('avg. ldc');
-        ylabel('avg. % signal change');
-        varargout = {T};
-    case 'DIST_meanLDC'
-        glm = [];
-        region = [1:8];
-        vararginoptions(varargin,{'glm','region'});
-        
-        T = load(fullfile(regDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
-        T = getrow(T,ismember(T.region,region)); 
-        T.group = abs(T.control-2);
-        % make plotting structure:
-        D=[];
-        v=ones(2,1);
-        for ii=1:size(T.sn,1)
-            d.sn = v.*T.sn(ii);
-            d.glm = v.*T.glm(ii);
-            d.hemi = v.*T.hemi(ii);
-            d.group = v.*T.group(ii);
-            d.region = v.*T.region(ii);
-            
-            d.ipsi = [0;1];
-            d.contra = [1;0];
-            
-            d.ldc(1,:) = mean(T.ldc_CsCr(ii,:));
-            d.ldc(2,:) = mean(T.ldc_IsIr(ii,:));
-            d.psc(1,:) = mean(T.psc_CsCr(ii));
-            d.psc(2,:) = mean(T.psc_IsIr(ii));
-            
-            D=addstruct(D,d);
-        end
-        
-        varargout = {D};
-    case 'DIST_meanLDCall'
-        glm = [];
-        region = [1:8];
-        vararginoptions(varargin,{'glm','region'});
-        
-        T = load(fullfile(regDir,['glm' num2str(glm) '_reg_Toverall.mat'])); % load data
-        T = getrow(T,ismember(T.region,region)); 
-        T.group = abs(T.control-2);
-        % make plotting structure:
-        D=[];
-        v=ones(4,1);
-        for ii=1:size(T.sn,1)
-            d.sn = v.*T.sn(ii);
-            d.glm = v.*T.glm(ii);
-            d.hemi = v.*T.hemi(ii);
-            d.group = v.*T.group(ii);
-            d.region = v.*T.region(ii);
-            
-            d.type = [1;2;3;4];
-            d.crossed = [0;0;1;1];
-            d.contra_stim = [1;0;0;1];
-            d.contra_hand = [1;0;1;0];
-
-            d.ldc(1,:) = mean(T.ldc_CsCr(ii,:));
-            d.ldc(2,:) = mean(T.ldc_IsIr(ii,:));
-            d.ldc(3,:) = mean(T.ldc_IsCr(ii,:));
-            d.ldc(4,:) = mean(T.ldc_CsIr(ii,:));
-            
-            d.psc(1,:) = mean(T.psc_CsCr(ii));
-            d.psc(2,:) = mean(T.psc_IsIr(ii));
-            d.psc(3,:) = mean(T.psc_IsCr(ii));
-            d.psc(4,:) = mean(T.psc_CsIr(ii));
-            
-            D=addstruct(D,d);
-        end
-        
-        varargout = {D};
+        keyboard
         
     case '0' % ------------ PCM -------------------------------------------
     case 'PCM:getSubjs'
@@ -3688,18 +2957,18 @@ switch what
     
     case 'PCM:fitCorrSameHemi'
         % Fits correlation models.
-        % Tests correspondence of activity patterns across two conditions. 
+        % Tests correspondence of activity patterns cross two conditions. 
         % Here, we test for correspondence across hemispheres during single
         % finger pressing in agenesis vs. controls.
-        glm = 11;
-        roi = [1,2,3,4,5];
+        glm = 3;
+        roi = [1:8];
         fprintf('pcm correlation models\n');
         for rr=roi
             agen_imana('PCM:fitCorrSameHemi_singleROI','roi',rr,'glm',glm,'saveit',1);
         end
     case 'PCM:fitCorrSameHemi_singleROI'
         % Fits within-hemi correlation models.
-        % Tests correspondence of activity patterns across two conditions. 
+        % Tests correspondence of activity patterns cross two conditions. 
         % Here, we test for correspondence across hemispheres during single
         % finger pressing in agenesis vs. controls.
         % 
@@ -3717,12 +2986,13 @@ switch what
         runEffect = 'random';
         
         % Get subjects: model controls and patients separately
-        S = agen_imana('PCM:getSubjs','group',group,'glm',glm);
+        S = agen_imana('PCM:getSubjs','group',group,'glm',3);
         % Define correlation models:
-        [M,mr] = agen_imana('PCM:defineCorrSameHemi_Models','numItems',5); % "fixed" correlation models
+        M  = agen_imana('PCM:defineCorrSameHemi_Models','numItems',5); % "fixed" correlation models
         Mf = pcm_buildCorrModel('type','nonlinear','withinCov','individual','numItems',5,'numCond',2,'r','flexible'); % flexible model
         % Do models for the same roi in each hemisphere separately (diff # voxels):
-        Tt = agen_imana('LIST_tt');         Tt = getrow(Tt,Tt.crossed==0); % UNCROSSED conditions only
+        Tt = agen_imana('LIST_tt');
+        %Tt = getrow(Tt,Tt.crossed==0); % UNCROSSED conditions only
         Tt.contraHemi = abs(Tt.hand-3);% label which hemi (L-1, R-2) is contralateral to finger press
         roiNum = find(regType==roi);
         T = []; % fits structure
@@ -3732,28 +3002,25 @@ switch what
             fprintf('%s hemi roi %d...getting data',hem{hh},r);
             % Get data:
             [Y,partVec,condVec,Gcv] = agen_imana('PCM:getData','sn',S.SN','glm',glm,'roi',roiNum(hh),'tt',Tt.trialType);
-            % calculate naive correlations
+            % Remove means from conditions, per run, according to contra and ipsilateral groupings (as mean pattern differs):
             corrNaive = [];
             for ii=1:numel(Y) % per subject
-%                 nRun  = numel(unique(partVec{ii}));
-%                 C0    = kron(eye(nRun),[Tt.contraHemi==hh,Tt.contraHemi~=hh]);
-%                 Y{ii} = Y{ii} -C0*pinv(C0)*Y{ii}; % do mean removal
+                nRun  = numel(unique(partVec{ii}));
+                C0    = kron(eye(nRun),[Tt.contraHemi==hh,Tt.contraHemi~=hh]);
+                Y{ii} = Y{ii} -C0*pinv(C0)*Y{ii}; % do mean removal
                 corrNaive(ii,1) = calcCorr(Gcv(:,:,ii));
             end
             % fit "fixed" models
             fprintf('...fitting');
             t = pcm_fitModelIndivid(Y,M,partVec,condVec,...
-                'runEffect',runEffect,'verbose',0,'maxIteration',10000,'fitScale',1);
-            t.corrFixed = mr;
+                'runEffect',runEffect,'verbose',0,'maxIteration',10000,'fitScale',0);
             % fit flexible model
             [tf,theta_f] = pcm_fitModelIndivid(Y,Mf,partVec,condVec,...
-                'runEffect',runEffect,'verbose',0,'maxIteration',10000,'fitScale',1);
+                'runEffect',runEffect,'verbose',0,'maxIteration',10000,'fitScale',0);
             % Calculate the maximum a-posterior estimate of the correlation between pattern 
             z = theta_f{1}(Mf.numGparams,:);      % pick out correlation parameter 
             t.corrFlex = [(exp(2.*z)-1)./(exp(2.*z)+1)]';  % take inverse Fisherz transform 
             t.likeFlex = tf.likelihood;
-            
-          %  t.gcv = rsa_vectorizeIPM(Gcv(:,:,ii));
             % indexing fields
             t.group  = ~S.control+1;
             t.hemi   = v.*hh;
@@ -3768,7 +3035,7 @@ switch what
         % Integrate fits across hemispheres:
         % do this by summing log evidence across hemispheres per participant
         F = tapply(T,{'sn','group'},{'likelihood','sum(x,1)'},{'likeFlex','sum(x,1)'},...
-            {'corrFlex','mean(x,1)'},{'corrNaive','mean(x,1)'},{'noise','mean(x,1)'});
+            {'corrFlex','mean(x,1)'},{'noise','mean(x,1)'});
         % cannot do geomean with negative and positive values- results are
         % nonsensical..
 %         F.corrFlex = ssqrt(T.corrFlex(T.hemi==1).*T.corrFlex(T.hemi==2)); % geometric mean of correlations across hemis
@@ -3789,11 +3056,12 @@ switch what
         end
         % Flexible model
         %M{end+1} = pcm_buildCorrModel('type','nonlinear','withinCov','individual','numItems',5,'r','flexible'); 
-        varargout = {M,r};    
+        varargout = {M};    
 
     case 'PCM:getCorrFits'
         % Gets models fits across regions & arranges into plotting
         % structure.
+        % Assumes null model is model 1 and noiseceiling is last model.
         % NOTE: this case returns fits integrated across hemispheres.
         glm   = [];
         roi   = [];
@@ -3954,18 +3222,17 @@ switch what
             drawline(P.corrFlex(ss),'dir','vert','linestyle','-.','color','r','linewidth',2); % estimated corr 
         end
         varargout = {P};
-    
     case 'PCM:plotCorrFits'
         % wrapper case to plot correlation fits
         % includes ALL subjects, split by group in plot
         % only handles one roi
         roi = [];
         glm = [];
-        type = 'posterior'; % posterior or logbayes
+        type = ''; % posterior or logbayes
         plotType = 'trace'; % or 'subjLines' (lines per subj)
         vararginoptions(varargin,{'roi','glm','type','plotType'});
         % get data
-        [~,P] = agen_imana('PCM:getCorrFits','roi',roi,'glm',glm,'type','');
+        [~,P] = agen_imana('PCM:getCorrFits','roi',roi,'glm',glm,'type','Uncrossed');
         % style
         clr = {[0 0 1],[1 0 0]};
         % plot
@@ -4006,7 +3273,7 @@ switch what
         glm = [];
         vararginoptions(varargin,{'roi','glm'});
         % get data
-        [~,P] = agen_imana('PCM:getCorrFits','roi',roi,'glm',glm,'type','');
+        [~,P] = agen_imana('PCM:getCorrFits','roi',roi,'glm',glm,'type','Uncrossed');
         %[P] = agen_imana('PCM:getCorrFits_perHemi','roi',roi,'glm',glm,'type','Uncrossed');
         sty = style.custom({[0 0 0.8],[0.8 0 0]});
         subplot(1,2,1); plt.dot(P.group,P.corrFlex,'split',P.group,'style',sty);
@@ -4480,7 +3747,7 @@ function drawSubjLinesDots(Y)
     for i=2:numCats
         X = [X; a.Children(end-2).XData];
     end
-    line(X,Y','color','k');
+    line(X,Y,'color','k');
 
 end
 function drawSubjLines(X,Y)
